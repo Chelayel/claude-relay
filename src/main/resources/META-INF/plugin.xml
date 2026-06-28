@@ -1,0 +1,31 @@
+<idea-plugin>
+    <id>com.charbel.claudecode.gui</id>
+    <name>Claude Code GUI</name>
+    <vendor email="charbelhelayel@gmail.com">Charbel Helayel</vendor>
+
+    <description><![CDATA[
+        <p>A native chat GUI for <b>Claude Code</b> inside JetBrains IDEs &mdash; a side-panel
+        experience similar to the official VS Code extension, instead of the terminal.</p>
+        <ul>
+            <li>Chat tool window that drives the <code>claude</code> CLI</li>
+            <li>Streams assistant responses and shows tool activity (edits, commands, reads)</li>
+            <li>Multi-turn conversations via session resume</li>
+            <li>Selectable permission mode and model</li>
+            <li>Runs in the context of the currently open project</li>
+        </ul>
+        <p><b>Requires</b> the Claude Code CLI to be installed separately
+        (<code>npm install -g @anthropic-ai/claude-code</code>) and an active Claude subscription.</p>
+        <p>This is an independent, unofficial plugin and is not affiliated with Anthropic.</p>
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow
+            id="Claude Code"
+            anchor="right"
+            secondary="false"
+            icon="/icons/claude.svg"
+            factoryClass="com.charbel.claudecode.ui.ClaudeToolWindowFactory"/>
+    </extensions>
+</idea-plugin>
