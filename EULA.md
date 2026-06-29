@@ -65,9 +65,10 @@ Anthropic through the Claude Code CLI is governed by Anthropic's terms and
 privacy policy.
 
 ## 9. Governing law
-This Agreement is governed by the laws of **[your jurisdiction — e.g., your
-country/state]**, without regard to its conflict-of-laws principles. _(Fill in
-before publishing.)_
+This Agreement is governed by and construed in accordance with the laws of
+**Lebanon**, without regard to its conflict-of-laws principles. You agree to
+submit to the exclusive jurisdiction of the competent courts located in
+**Beirut, Lebanon** for any dispute arising out of or relating to this Agreement.
 
 ## 10. Contact
 Questions about this Agreement: **charbelhelayel@gmail.com**
