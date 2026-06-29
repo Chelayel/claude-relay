@@ -67,7 +67,23 @@ Post targets: r/JetBrains, r/ClaudeAI, LinkedIn, X/Twitter, dev.to.
 
 ---
 
-## Screenshot shot-list (capture from a real, populated session)
+## Captured screenshots (in `docs/screenshots/`)
+
+| File | Shows | Use for |
+| --- | --- | --- |
+| `overview.png` | Full IDE + panel with Project context (CLAUDE.md, agents, skills, commands) | **Primary Marketplace screenshot #1** / README hero |
+| `transcript.png` | Streaming answer with rendered Markdown + tool activity | Marketplace #2 |
+| `add-context.png` | The `+` "Add context" menu (current file, selection, files, images, run-as-agent) | Marketplace #3 |
+| `composer.png` | Compact composer (Agent/Ask, model, permission, send) | Marketplace #4 / inline |
+
+**Uploading to the Marketplace:** screenshots are added on the plugin's Marketplace page
+(*Edit plugin → Media*), not bundled in the zip. Upload the four above in that order; set
+`overview.png` as the first/cover image. Recommend ≥ 1280px wide; the tall panel shots are fine as-is.
+
+> Tip: for an even cleaner cover, retake `overview.png` after removing the duplicate
+> `code-reviewer` agent file so the Agents row shows three distinct agents.
+
+## Screenshot shot-list (reference — for future captures)
 
 Capture at ~1.5–2× scale on a clean theme (Dark by default; one Light variant for the banner).
 Recommended: a wide, **detached** tool window so the composer breathes.

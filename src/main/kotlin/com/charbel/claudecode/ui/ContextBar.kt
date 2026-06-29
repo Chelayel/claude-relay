@@ -1,6 +1,7 @@
 package com.charbel.claudecode.ui
 
 import com.charbel.claudecode.cli.ProjectAssets
+import com.intellij.icons.AllIcons
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
@@ -32,14 +33,32 @@ import javax.swing.JPanel
 class ContextBar(
     private val onOpenFile: (File) -> Unit,
     private val onUseAsset: (ProjectAssets.Asset) -> Unit,
+    private val onRefresh: () -> Unit,
 ) : JPanel(BorderLayout()) {
 
     private val header = JBLabel().apply {
         font = JBUI.Fonts.smallFont()
         foreground = JBColor.GRAY
         cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
-        border = JBUI.Borders.empty(5, 10, 5, 10)
-        toolTipText = "Auto-loaded by Claude — click to collapse / expand"
+        toolTipText = "Click to expand / collapse"
+    }
+    private val rescan = JButton("Rescan", AllIcons.Actions.Refresh).apply {
+        isFocusable = false
+        isContentAreaFilled = false
+        isBorderPainted = false
+        isOpaque = false
+        font = JBUI.Fonts.smallFont()
+        foreground = JBColor.GRAY
+        margin = JBUI.emptyInsets()
+        cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+        toolTipText = "Re-scan .claude/agents, .claude/skills & .claude/commands for new items"
+        addActionListener { onRefresh() }
+    }
+    private val headerRow = JPanel(BorderLayout()).apply {
+        isOpaque = false
+        border = JBUI.Borders.empty(4, 10, 4, 8)
+        add(header, BorderLayout.WEST)
+        add(rescan, BorderLayout.EAST)
     }
     private val content = JPanel().apply {
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
@@ -53,7 +72,7 @@ class ContextBar(
     init {
         isOpaque = false
         border = JBUI.Borders.customLine(JBColor.border(), 0, 0, 1, 0)
-        add(header, BorderLayout.NORTH)
+        add(headerRow, BorderLayout.NORTH)
         add(content, BorderLayout.CENTER)
         header.addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
@@ -79,19 +98,22 @@ class ContextBar(
         content.isVisible = expanded
         if (expanded) {
             snap.claudeMd?.let { md ->
-                group("Memory", listOf(chip("CLAUDE.md", "Open project memory") { onOpenFile(md) }))
+                group("Memory", null, listOf(chip("CLAUDE.md", "Open project memory") { onOpenFile(md) }))
             }
-            group("Agents", snap.agents.map { a -> chip(a.name, a.description) { onUseAsset(a) } })
-            group("Skills", snap.skills.map { s -> chip(s.name, s.description) { onUseAsset(s) } })
-            group("Commands", snap.commands.map { c -> chip("/${c.name}", c.description ?: "slash command") { onUseAsset(c) } })
+            group("Agents", ".claude/agents", snap.agents.map { a -> chip(a.name, a.description) { onUseAsset(a) } })
+            group("Skills", ".claude/skills", snap.skills.map { s -> chip(s.name, s.description) { onUseAsset(s) } })
+            group("Commands", ".claude/commands", snap.commands.map { c -> chip("/${c.name}", c.description ?: "slash command") { onUseAsset(c) } })
         }
         revalidate()
         repaint()
     }
 
-    private fun group(title: String, chips: List<JComponent>) {
+    /** A titled row of chips; [source] shows where these live so it's obvious
+     *  where to add more (e.g. drop a new persona in `.claude/agents`). */
+    private fun group(title: String, source: String?, chips: List<JComponent>) {
         if (chips.isEmpty()) return
-        val label = JBLabel(title.uppercase()).apply {
+        val heading = title.uppercase() + (source?.let { "   ·   $it" } ?: "")
+        val label = JBLabel(heading).apply {
             font = JBUI.Fonts.smallFont()
             foreground = JBColor.GRAY
             border = JBUI.Borders.empty(5, 2, 1, 0)

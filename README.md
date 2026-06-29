@@ -66,10 +66,24 @@ but never modifies your files.
 
 ## Screenshots
 
-<!-- Add captured screenshots here — see MARKETING.md for the shot list. -->
-| Chat & tools | Add-context menu | Agent / Ask modes |
-| --- | --- | --- |
-| _coming soon_ | _coming soon_ | _coming soon_ |
+<p align="center">
+  <img src="docs/screenshots/overview.png" alt="Claude Relay docked in a JetBrains IDE" width="900"><br>
+  <em>Docked in your IDE — your project's <code>CLAUDE.md</code>, agents, skills and slash commands surfaced as context.</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/transcript.png" alt="Streaming transcript with tool activity" width="380">
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/add-context.png" alt="Add-context menu" width="380">
+</p>
+<p align="center">
+  <em>A real, themed transcript with live tool activity (left) — and one-click context: current file, selection, files, images, or run-as-agent (right).</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/composer.png" alt="The composer" width="760"><br>
+  <em>Compact composer — Agent / Ask mode, model &amp; permission, attachments, and send.</em>
+</p>
 
 ---
 

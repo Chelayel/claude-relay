@@ -95,7 +95,7 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
         foreground = JBColor.GRAY
     }
     private var currentTitle: String? = null
-    private val contextBar = ContextBar(onOpenFile = ::openFile, onUseAsset = ::useAsset)
+    private val contextBar = ContextBar(onOpenFile = ::openFile, onUseAsset = ::useAsset, onRefresh = ::refreshAssets)
     private var assetSnapshot: ProjectAssets.Snapshot? = null
 
     // ---- prompt context: images, files, current editor selection -------------
@@ -532,8 +532,8 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
         if (!snap.isEmpty) {
             group.addSeparator()
             agentSubMenu(group, snap.agents)
-            subMenu(group, "Skills", snap.skills, { it.name }, { it.description }) { useAsset(it) }
-            subMenu(group, "Commands", snap.commands, { "/${it.name}" }, { it.description }) { useAsset(it) }
+            subMenu(group, "Skills  ·  .claude/skills", snap.skills, { it.name }, { it.description }) { useAsset(it) }
+            subMenu(group, "Commands  ·  .claude/commands", snap.commands, { "/${it.name}" }, { it.description }) { useAsset(it) }
         }
 
         JBPopupFactory.getInstance().createActionGroupPopup(
@@ -556,7 +556,7 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
         run: (T) -> Unit,
     ) {
         if (items.isEmpty()) return
-        val sub = DefaultActionGroup("$title (${items.size})", true)
+        val sub = DefaultActionGroup(title, true)
         items.forEach { item -> sub.add(action(label(item), description = description(item)) { run(item) }) }
         parent.add(sub)
     }
@@ -564,7 +564,7 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
     /** Agents are single-select: a checkmark marks the active one; re-picking clears it. */
     private fun agentSubMenu(parent: DefaultActionGroup, agents: List<ProjectAssets.Asset>) {
         if (agents.isEmpty()) return
-        val sub = DefaultActionGroup("Run as agent (${agents.size})", true)
+        val sub = DefaultActionGroup("Run as agent  ·  .claude/agents", true)
         agents.forEach { agent ->
             sub.add(object : ToggleAction(agent.name, agent.description, null) {
                 override fun isSelected(e: AnActionEvent) = activeAgent?.name == agent.name
