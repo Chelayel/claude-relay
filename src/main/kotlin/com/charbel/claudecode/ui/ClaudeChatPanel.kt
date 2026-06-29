@@ -46,6 +46,8 @@ import java.awt.RenderingHints
 import java.awt.Toolkit
 import java.awt.datatransfer.DataFlavor
 import java.awt.event.ActionEvent
+import java.awt.event.ComponentAdapter
+import java.awt.event.ComponentEvent
 import java.awt.event.FocusAdapter
 import java.awt.event.FocusEvent
 import java.awt.event.KeyAdapter
@@ -93,7 +95,7 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
         foreground = JBColor.GRAY
     }
     private var currentTitle: String? = null
-    private val contextBar = ContextBar(onOpenFile = ::openFile, onInsertCommand = ::insertIntoInput)
+    private val contextBar = ContextBar(onOpenFile = ::openFile, onUseAsset = ::useAsset)
     private var assetSnapshot: ProjectAssets.Snapshot? = null
 
     // ---- prompt context: images, files, current editor selection -------------
@@ -122,6 +124,9 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
     // Auto-attach the active editor selection (Cursor-style), shown as a live chip.
     private var autoAttachSelection = true
     private var autoChip: ContextChip? = null
+
+    // The single agent (persona) Claude runs as for this session, via --agent.
+    private var activeAgent: ProjectAssets.Asset? = null
 
     /** One piece of attached context: image, file, or an editor selection. */
     private class ContextChip(
@@ -279,12 +284,17 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
             preferredSize = Dimension(0, JBUI.scale(64))
         }
 
-        val pickers = JPanel(FlowLayout(FlowLayout.LEFT, JBUI.scale(2), 0)).apply {
+        // Controls wrap onto a second row on a narrow panel instead of colliding
+        // with the Send button; Send stays pinned to the right.
+        val pickers = JPanel(WrapLayout(FlowLayout.LEFT, JBUI.scale(4), JBUI.scale(3))).apply {
             isOpaque = false
             add(contextButton)
             add(modeChip)
             add(modelChip)
             add(permissionChip)
+            addComponentListener(object : ComponentAdapter() {
+                override fun componentResized(e: ComponentEvent) = revalidate()
+            })
         }
         // Send and Stop share the trailing slot; updateControls toggles visibility.
         val action = JPanel(FlowLayout(FlowLayout.RIGHT, 0, 0)).apply {
@@ -294,8 +304,8 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
         }
         val toolbar = JPanel(BorderLayout()).apply {
             isOpaque = false
-            border = JBUI.Borders.empty(0, 8, 7, 6)
-            add(pickers, BorderLayout.WEST)
+            border = JBUI.Borders.empty(1, 8, 7, 6)
+            add(pickers, BorderLayout.CENTER)
             add(action, BorderLayout.EAST)
         }
 
@@ -453,6 +463,35 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
         FileEditorManager.getInstance(project).openFile(vf, true)
     }
 
+    /** An agent is a single persona Claude runs as (the `--agent` flag); a skill
+     *  attaches as a removable context chip; a command drops in at the caret. */
+    private fun useAsset(asset: ProjectAssets.Asset) {
+        when (asset.kind) {
+            ProjectAssets.Kind.AGENT -> setActiveAgent(if (activeAgent?.name == asset.name) null else asset)
+            ProjectAssets.Kind.COMMAND -> insertAtCaret("/${asset.name} ")
+            ProjectAssets.Kind.SKILL -> addChip(
+                ContextChip(
+                    label = "skill: ${asset.name}",
+                    icon = null,
+                    promptText = "Use the \"${asset.name}\" skill for this request.",
+                    displayMark = "↳ ${asset.name} skill",
+                    tooltip = asset.description ?: "skill: ${asset.name}",
+                ),
+            )
+        }
+    }
+
+    private fun setActiveAgent(asset: ProjectAssets.Asset?) {
+        activeAgent = asset
+        rebuildContext()
+    }
+
+    private fun insertAtCaret(text: String) {
+        val pos = input.caretPosition.coerceIn(0, input.text.length)
+        input.insert(text, pos)
+        input.requestFocusInWindow()
+    }
+
     // ---- prompt context (images / files / selection) -------------------------
 
     /** Claude has no image/file flag in `-p` mode; we hand it absolute paths and
@@ -492,9 +531,9 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
 
         if (!snap.isEmpty) {
             group.addSeparator()
-            subMenu(group, "Agents", snap.agents, { it.name }, { it.description }) { openFile(it.file) }
-            subMenu(group, "Skills", snap.skills, { it.name }, { it.description }) { openFile(it.file) }
-            subMenu(group, "Commands", snap.commands, { "/${it.name}" }, { it.description }) { insertIntoInput("/${it.name} ") }
+            agentSubMenu(group, snap.agents)
+            subMenu(group, "Skills", snap.skills, { it.name }, { it.description }) { useAsset(it) }
+            subMenu(group, "Commands", snap.commands, { "/${it.name}" }, { it.description }) { useAsset(it) }
         }
 
         JBPopupFactory.getInstance().createActionGroupPopup(
@@ -519,6 +558,20 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
         if (items.isEmpty()) return
         val sub = DefaultActionGroup("$title (${items.size})", true)
         items.forEach { item -> sub.add(action(label(item), description = description(item)) { run(item) }) }
+        parent.add(sub)
+    }
+
+    /** Agents are single-select: a checkmark marks the active one; re-picking clears it. */
+    private fun agentSubMenu(parent: DefaultActionGroup, agents: List<ProjectAssets.Asset>) {
+        if (agents.isEmpty()) return
+        val sub = DefaultActionGroup("Run as agent (${agents.size})", true)
+        agents.forEach { agent ->
+            sub.add(object : ToggleAction(agent.name, agent.description, null) {
+                override fun isSelected(e: AnActionEvent) = activeAgent?.name == agent.name
+                override fun setSelected(e: AnActionEvent, state: Boolean) =
+                    setActiveAgent(if (state) agent else null)
+            })
+        }
         parent.add(sub)
     }
 
@@ -622,18 +675,27 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
 
     private fun rebuildContext() {
         contextPanel.removeAll()
-        contextChips.forEach { chip -> contextPanel.add(contextChipComponent(chip, auto = false)) }
+        // One active agent (the persona Claude runs as), shown as an accent pill.
+        activeAgent?.let { a ->
+            val pill = ContextChip("▸ ${a.name}", null, "", "", "Running as the \"${a.name}\" agent")
+            contextPanel.add(contextChipComponent(pill, accent = true) { setActiveAgent(null) })
+        }
+        contextChips.forEach { chip ->
+            contextPanel.add(contextChipComponent(chip, accent = false) { contextChips.remove(chip); rebuildContext() })
+        }
         val auto = autoChip.takeIf { autoAttachSelection }
-        auto?.let { contextPanel.add(contextChipComponent(it, auto = true)) }
-        contextPanel.isVisible = contextChips.isNotEmpty() || auto != null
+        auto?.let {
+            contextPanel.add(contextChipComponent(it, accent = true) { autoAttachSelection = false; refreshAutoContext() })
+        }
+        contextPanel.isVisible = activeAgent != null || contextChips.isNotEmpty() || auto != null
         contextPanel.revalidate()
         contextPanel.repaint()
         revalidate()
         repaint()
     }
 
-    private fun contextChipComponent(chip: ContextChip, auto: Boolean): JComponent {
-        val borderColor: Color = if (auto) ACCENT else JBColor.border()
+    private fun contextChipComponent(chip: ContextChip, accent: Boolean, onRemove: () -> Unit): JComponent {
+        val borderColor: Color = if (accent) ACCENT else JBColor.border()
         val comp = object : JPanel(FlowLayout(FlowLayout.LEFT, JBUI.scale(4), JBUI.scale(2))) {
             init { isOpaque = false }
             override fun paintComponent(g: Graphics) {
@@ -649,8 +711,8 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
                 super.paintComponent(g)
             }
         }
-        comp.toolTipText = if (auto) "Auto-attached selection — click ✕ to turn off" else chip.tooltip
-        comp.add(JBLabel((if (auto) "✦ " else "") + truncate(chip.label, 26)).apply {
+        comp.toolTipText = chip.tooltip
+        comp.add(JBLabel(truncate(chip.label, 26)).apply {
             icon = chip.icon
             font = JBUI.Fonts.smallFont()
         })
@@ -661,16 +723,8 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
             isOpaque = false
             margin = JBUI.emptyInsets()
             cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
-            toolTipText = if (auto) "Turn off auto-attach" else "Remove"
-            addActionListener {
-                if (auto) {
-                    autoAttachSelection = false
-                    refreshAutoContext()
-                } else {
-                    contextChips.remove(chip)
-                    rebuildContext()
-                }
-            }
+            toolTipText = "Remove"
+            addActionListener { onRemove() }
         })
         return comp
     }
@@ -832,9 +886,11 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
 
         input.text = ""
         clearContext()
+        val agent = activeAgent?.name
         val prompt = buildPrompt(text, context)
         if (currentTitle == null) setSessionTitle(text.ifBlank { context.firstOrNull()?.label ?: "Context" })
-        chat.addUser(buildDisplay(text, context))
+        val display = buildDisplay(text, context).let { if (agent != null) "$it\n\n▸ running as \"$agent\"" else it }
+        chat.addUser(display)
         chat.setBusy(true)
         running = true
         statusLabel.text = "Working…"
@@ -851,7 +907,7 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
 
         val client = ClaudeCliClient(workingDir, executable)
         activeClient = client
-        client.send(prompt, sessionId, permission, model, disallowed, object : ClaudeCliClient.Listener {
+        client.send(prompt, sessionId, permission, model, agent, disallowed, object : ClaudeCliClient.Listener {
             override fun onSystemInit(sessionId: String) { this@ClaudeChatPanel.sessionId = sessionId }
             override fun onAssistantText(text: String) = chat.assistantChunk(text)
             override fun onThinking(text: String) = chat.addThinking(text)

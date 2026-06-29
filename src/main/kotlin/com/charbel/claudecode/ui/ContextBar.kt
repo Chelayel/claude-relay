@@ -31,7 +31,7 @@ import javax.swing.JPanel
  */
 class ContextBar(
     private val onOpenFile: (File) -> Unit,
-    private val onInsertCommand: (String) -> Unit,
+    private val onUseAsset: (ProjectAssets.Asset) -> Unit,
 ) : JPanel(BorderLayout()) {
 
     private val header = JBLabel().apply {
@@ -79,13 +79,11 @@ class ContextBar(
         content.isVisible = expanded
         if (expanded) {
             snap.claudeMd?.let { md ->
-                group("Memory", listOf(chip("CLAUDE.md", "Project memory") { onOpenFile(md) }))
+                group("Memory", listOf(chip("CLAUDE.md", "Open project memory") { onOpenFile(md) }))
             }
-            group("Agents", snap.agents.map { a -> chip(a.name, a.description) { onOpenFile(a.file) } })
-            group("Skills", snap.skills.map { s -> chip(s.name, s.description) { onOpenFile(s.file) } })
-            group("Commands", snap.commands.map { c ->
-                chip("/${c.name}", c.description ?: "slash command") { onInsertCommand("/${c.name} ") }
-            })
+            group("Agents", snap.agents.map { a -> chip(a.name, a.description) { onUseAsset(a) } })
+            group("Skills", snap.skills.map { s -> chip(s.name, s.description) { onUseAsset(s) } })
+            group("Commands", snap.commands.map { c -> chip("/${c.name}", c.description ?: "slash command") { onUseAsset(c) } })
         }
         revalidate()
         repaint()

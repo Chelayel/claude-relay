@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.charbel.claudecode"
-version = "0.4.0"
+version = "0.5.2"
 
 repositories {
     mavenCentral()

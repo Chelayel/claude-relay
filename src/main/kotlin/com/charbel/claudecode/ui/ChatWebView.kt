@@ -100,7 +100,7 @@ class ChatWebView(parent: Disposable) : ChatView {
             "<meta name='color-scheme' content='${if (dark()) "dark" else "light"}'>" +
             "<style>$vars$CSS</style></head><body>" +
             "<div id='empty'><div class='spark'>$CLAUDE_SVG</div>" +
-            "<div class='etitle'>Claude Code</div>" +
+            "<div class='etitle'>Claude Relay</div>" +
             "<div class='esub'>Ask about this project, request changes, or run a task.</div>" +
             "<div id='home'></div></div>" +
             "<div id='chat'></div>" +

@@ -1,28 +1,37 @@
 <idea-plugin>
     <id>com.charbel.claudecode.gui</id>
-    <name>Claude Code GUI</name>
-    <vendor email="charbelhelayel@gmail.com">Charbel Helayel</vendor>
+    <name>Claude Relay</name>
+    <vendor email="charbelhelayel@gmail.com">Chelayel</vendor>
 
     <description><![CDATA[
-        <p>A native chat GUI for <b>Claude Code</b> inside JetBrains IDEs &mdash; a side-panel
-        experience similar to the official VS Code extension, instead of the terminal.</p>
+        <h2>Claude Relay — Claude Code, native in your JetBrains IDE</h2>
+        <p>A native chat panel that drives the official <b>Claude Code</b> CLI from inside IntelliJ IDEA,
+        PyCharm, WebStorm, GoLand, Rider and the rest of the JetBrains family — the side-panel experience
+        you'd get in VS Code, without leaving your IDE or living in the terminal.</p>
+
+        <p><b>Highlights</b></p>
         <ul>
-            <li>Chat tool window that drives the <code>claude</code> CLI</li>
-            <li>Streams assistant responses and shows tool activity (edits, commands, reads)</li>
-            <li>Multi-turn conversations via session resume</li>
-            <li>Selectable permission mode and model</li>
-            <li>Runs in the context of the currently open project</li>
+            <li><b>Streaming chat</b> with live tool activity — edits, commands, and file reads as they happen</li>
+            <li><b>Agent &amp; Ask modes</b> — let Claude edit and run commands, or keep it strictly read-only</li>
+            <li><b>Editor-aware</b> — auto-attaches your current selection, so "explain/refactor this" just works</li>
+            <li><b>Attach files &amp; images</b> — pick a file, or paste a screenshot straight into the prompt</li>
+            <li><b>Project context</b> — picks up your <code>CLAUDE.md</code>, agents, skills and slash commands automatically</li>
+            <li><b>Session history</b> — resume past conversations from a built-in picker</li>
+            <li><b>Model &amp; permission</b> selectors, with live usage and limits</li>
         </ul>
-        <p><b>Requires</b> the Claude Code CLI to be installed separately
+
+        <p><b>Requires</b> the Claude Code CLI installed separately
         (<code>npm install -g @anthropic-ai/claude-code</code>) and an active Claude subscription.</p>
-        <p>This is an independent, unofficial plugin and is not affiliated with Anthropic.</p>
+
+        <p><i>Independent and unofficial — not affiliated with Anthropic. Part of the “Relay” family of
+        IDE companions by Chelayel.</i></p>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
 
     <extensions defaultExtensionNs="com.intellij">
         <toolWindow
-            id="Claude Code"
+            id="Claude Relay"
             anchor="right"
             secondary="false"
             icon="/icons/claude.svg"

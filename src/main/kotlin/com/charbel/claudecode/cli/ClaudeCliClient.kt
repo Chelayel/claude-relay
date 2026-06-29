@@ -50,6 +50,7 @@ class ClaudeCliClient(
         sessionId: String?,
         permissionMode: String,
         model: String?,
+        agent: String? = null,
         disallowedTools: List<String> = emptyList(),
         listener: Listener,
     ) {
@@ -62,6 +63,7 @@ class ClaudeCliClient(
             if (!sessionId.isNullOrBlank()) addParameters("--resume", sessionId)
             if (permissionMode.isNotBlank()) addParameters("--permission-mode", permissionMode)
             if (!model.isNullOrBlank()) addParameters("--model", model)
+            if (!agent.isNullOrBlank()) addParameters("--agent", agent)
             if (disallowedTools.isNotEmpty()) {
                 addParameter("--disallowedTools")
                 addParameters(disallowedTools)
