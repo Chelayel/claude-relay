@@ -11,6 +11,13 @@ Licensed under the Apache License, Version 2.0.
 https://github.com/google/gson
 Apache 2.0: https://www.apache.org/licenses/LICENSE-2.0
 -----------------------------------------------------------------------
+error-prone annotations (error_prone_annotations)
+Copyright (C) Google Inc.
+Licensed under the Apache License, Version 2.0.
+A transitive dependency of Gson.
+https://github.com/google/error-prone
+Apache 2.0: https://www.apache.org/licenses/LICENSE-2.0
+-----------------------------------------------------------------------
 
 Components provided by the IntelliJ Platform / JetBrains IDE at runtime — used
 by, but NOT redistributed within, this product:
