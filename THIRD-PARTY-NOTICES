@@ -1,0 +1,26 @@
+Claude Relay — Third-Party Notices
+==================================
+
+This product (the distributed plugin) bundles the following third-party
+open-source software. Their licenses are reproduced/linked below.
+
+-----------------------------------------------------------------------
+Gson
+Copyright (C) Google Inc.
+Licensed under the Apache License, Version 2.0.
+https://github.com/google/gson
+Apache 2.0: https://www.apache.org/licenses/LICENSE-2.0
+-----------------------------------------------------------------------
+
+Components provided by the IntelliJ Platform / JetBrains IDE at runtime — used
+by, but NOT redistributed within, this product:
+
+  - IntelliJ Platform SDK            (Apache License 2.0)
+  - pty4j                            (provided by the IntelliJ Platform)
+
+These are supplied by the host JetBrains IDE and are governed by their
+respective licenses.
+
+This product also requires, but does not include or redistribute, the
+"Claude Code" CLI by Anthropic, which is governed by Anthropic's own terms.
+Claude Relay is independent and not affiliated with Anthropic.

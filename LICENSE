@@ -1,0 +1,28 @@
+Claude Relay — Proprietary Software License
+
+Copyright © 2026 Chelayel. All rights reserved.
+
+This software, including its source code, binaries, assets, and documentation
+(the "Software"), is the confidential and proprietary property of Chelayel
+("the Author").
+
+No license or right to use, copy, reproduce, modify, merge, publish, distribute,
+sublicense, sell, or create derivative works of the Software or its source code
+is granted, except:
+
+  1. as expressly set out in a separate written agreement signed by the Author; or
+  2. for the installation and use of the distributed plugin binary, solely under
+     the terms of the End-User License Agreement (see EULA.md).
+
+Unauthorized copying, distribution, modification, reverse engineering, or use of
+the Software, in whole or in part, via any medium, is strictly prohibited.
+
+Third-party open-source components bundled with the Software are licensed under
+their own terms; see THIRD-PARTY-NOTICES.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHOR BE
+LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

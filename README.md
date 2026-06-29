@@ -88,5 +88,6 @@ but never modifies your files.
 ---
 
 <div align="center">
-Built by <b>Chelayel</b> · Unofficial, not affiliated with Anthropic
+Built by <b>Chelayel</b> · Unofficial, not affiliated with Anthropic<br>
+© 2026 Chelayel — proprietary, all rights reserved. See <a href="LICENSE">LICENSE</a> and <a href="EULA.md">EULA</a>.
 </div>

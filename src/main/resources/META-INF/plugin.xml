@@ -27,6 +27,17 @@
         IDE companions by Chelayel.</i></p>
     ]]></description>
 
+    <change-notes><![CDATA[
+        <p><b>1.0.0</b> — First release.</p>
+        <ul>
+            <li>Native Claude Code chat panel — streaming transcript with live tool activity</li>
+            <li>Agent &amp; Ask modes; single-select agent persona</li>
+            <li>Editor-aware context, file &amp; image attachments</li>
+            <li>Project agents / skills / commands surfaced, with one-click access and rescan</li>
+            <li>Session history &amp; resume; model &amp; permission selectors; live usage</li>
+        </ul>
+    ]]></change-notes>
+
     <depends>com.intellij.modules.platform</depends>
 
     <extensions defaultExtensionNs="com.intellij">
