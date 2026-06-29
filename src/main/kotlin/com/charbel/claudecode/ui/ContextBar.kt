@@ -84,6 +84,7 @@ class ContextBar(
     }
 
     fun update(snap: ProjectAssets.Snapshot) {
+        if (snap == snapshot) return // nothing changed — avoid a needless relayout/flicker
         snapshot = snap
         isVisible = !snap.isEmpty
         rebuild()

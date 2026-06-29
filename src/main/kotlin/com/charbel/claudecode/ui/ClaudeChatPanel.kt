@@ -178,7 +178,11 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
         installSelectionTracking()
         updateControls()
 
-        refreshAssets()
+        // Scan synchronously up front so the context bar's visibility is correct
+        // from the first layout — before a (possibly heavy) session replay runs.
+        // Otherwise an async scan can land after first paint and the bar flickers
+        // in late, or not until the input is focused.
+        applyAssets(ProjectAssets.scan(workingDir))
         restoreLastSession()
         refreshTui(force = true)
     }
