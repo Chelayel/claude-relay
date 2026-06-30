@@ -6,6 +6,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 
 ## [Unreleased]
 
+### Changed
+- Relicensed under the **MIT License** — Claude Relay is now open source.
+
 ## [1.0.0] - 2026-06-29
 
 First public release. A native **Claude Code** chat panel for JetBrains IDEs.
