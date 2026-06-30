@@ -1,5 +1,5 @@
 <idea-plugin>
-    <id>com.charbel.claudecode.gui</id>
+    <id>com.chelayel.relay.claude</id>
     <name>Claude Relay</name>
     <vendor email="charbelhelayel@gmail.com" url="https://github.com/Chelayel/claude-relay">Chelayel</vendor>
 
@@ -31,6 +31,8 @@
     ]]></description>
 
     <change-notes><![CDATA[
+        <p><b>1.0.3</b> — Compatibility fix for upcoming IntelliJ releases (replaced a
+        platform API scheduled for removal). Shift+Enter inserts a newline.</p>
         <p><b>1.0.2</b> — Claude Relay is now free and open source (MIT).
         Source &amp; contributions: github.com/Chelayel/claude-relay.</p>
         <p><b>1.0.1</b> — Fixed intermittent “Project context” bar visibility.</p>

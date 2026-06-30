@@ -17,7 +17,7 @@ import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.event.SelectionEvent
 import com.intellij.openapi.editor.event.SelectionListener
 import com.intellij.openapi.fileChooser.FileChooser
-import com.intellij.openapi.fileChooser.FileChooserDescriptor
+import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.DumbAwareAction
@@ -581,7 +581,7 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
     }
 
     private fun chooseFiles(imageExts: Set<String>, imagesOnly: Boolean) {
-        var descriptor = FileChooserDescriptor(true, false, false, false, false, true)
+        var descriptor = FileChooserDescriptorFactory.createMultipleFilesNoJarsDescriptor()
             .withTitle(if (imagesOnly) "Select Image" else "Select File")
         if (imagesOnly) descriptor = descriptor.withFileFilter { it.extension?.lowercase() in imageExts }
         FileChooser.chooseFiles(descriptor, project, null).forEach { vf ->

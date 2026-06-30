@@ -6,6 +6,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-06-30
+
+### Changed
+- Compatibility: replaced a platform API scheduled for removal
+  (`FileChooserDescriptor` constructor → `FileChooserDescriptorFactory`), so the
+  plugin stays compatible with upcoming IntelliJ releases (verified against
+  2026.2 EAP).
+- Set the final plugin id to `com.chelayel.relay.claude`.
+
 ## [1.0.2] - 2026-06-30
 
 ### Changed
