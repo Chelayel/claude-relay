@@ -4,7 +4,7 @@ plugins {
     id("org.jetbrains.intellij.platform") version "2.17.0"
 }
 
-group = "com.charbel.claudecode"
+group = "com.chelayel.relay"
 version = "1.0.3"
 
 repositories {
