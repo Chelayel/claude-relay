@@ -1,4 +1,4 @@
-package com.charbel.claudecode.cli
+package com.chelayel.claudecode.cli
 
 import java.io.File
 

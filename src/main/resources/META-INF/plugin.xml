@@ -50,6 +50,6 @@
             anchor="right"
             secondary="false"
             icon="/icons/claude.svg"
-            factoryClass="com.charbel.claudecode.ui.ClaudeToolWindowFactory"/>
+            factoryClass="com.chelayel.claudecode.ui.ClaudeToolWindowFactory"/>
     </extensions>
 </idea-plugin>

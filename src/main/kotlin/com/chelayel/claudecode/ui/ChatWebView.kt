@@ -1,11 +1,10 @@
-package com.charbel.claudecode.ui
+package com.chelayel.claudecode.ui
 
 import com.google.gson.Gson
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.editor.colors.EditorColorsManager
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.ColorUtil
-import com.intellij.ui.JBColor
 import com.intellij.ui.jcef.JBCefBrowser
 import com.intellij.util.ui.UIUtil
 import org.cef.browser.CefBrowser

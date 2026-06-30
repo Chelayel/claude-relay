@@ -1,10 +1,10 @@
-package com.charbel.claudecode.ui
+package com.chelayel.claudecode.ui
 
-import com.charbel.claudecode.cli.ClaudeCli
-import com.charbel.claudecode.cli.ClaudeCliClient
-import com.charbel.claudecode.cli.ClaudeTui
-import com.charbel.claudecode.cli.ProjectAssets
-import com.charbel.claudecode.cli.SessionStore
+import com.chelayel.claudecode.cli.ClaudeCli
+import com.chelayel.claudecode.cli.ClaudeCliClient
+import com.chelayel.claudecode.cli.ClaudeTui
+import com.chelayel.claudecode.cli.ProjectAssets
+import com.chelayel.claudecode.cli.SessionStore
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.AnAction

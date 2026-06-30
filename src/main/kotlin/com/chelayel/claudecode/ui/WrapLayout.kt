@@ -1,4 +1,4 @@
-package com.charbel.claudecode.ui
+package com.chelayel.claudecode.ui
 
 import java.awt.Container
 import java.awt.Dimension

@@ -1,4 +1,4 @@
-package com.charbel.claudecode.ui
+package com.chelayel.claudecode.ui
 
 /**
  * Minimal Markdown → HTML rendering good enough for chat: fenced code blocks,

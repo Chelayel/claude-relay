@@ -1,4 +1,4 @@
-package com.charbel.claudecode.cli
+package com.chelayel.claudecode.cli
 
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser

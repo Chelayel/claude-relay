@@ -1,4 +1,4 @@
-package com.charbel.claudecode.cli
+package com.chelayel.claudecode.cli
 
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.logger

@@ -1,4 +1,4 @@
-package com.charbel.claudecode.ui
+package com.chelayel.claudecode.ui
 
 import com.intellij.openapi.editor.colors.EditorColorsManager
 import com.intellij.ui.ColorUtil

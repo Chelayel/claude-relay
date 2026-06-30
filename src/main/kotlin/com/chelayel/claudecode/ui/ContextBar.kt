@@ -1,6 +1,6 @@
-package com.charbel.claudecode.ui
+package com.chelayel.claudecode.ui
 
-import com.charbel.claudecode.cli.ProjectAssets
+import com.chelayel.claudecode.cli.ProjectAssets
 import com.intellij.icons.AllIcons
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
