@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.charbel.claudecode.gui</id>
     <name>Claude Relay</name>
-    <vendor email="charbelhelayel@gmail.com">Chelayel</vendor>
+    <vendor email="charbelhelayel@gmail.com" url="https://github.com/Chelayel/claude-relay">Chelayel</vendor>
 
     <description><![CDATA[
         <h2>Claude Relay — Claude Code, native in your JetBrains IDE</h2>
@@ -23,19 +23,21 @@
         <p><b>Requires</b> the Claude Code CLI installed separately
         (<code>npm install -g @anthropic-ai/claude-code</code>) and an active Claude subscription.</p>
 
+        <p>☕ <b>Free and open source</b> (MIT). Source, issues, and contributions:
+        <a href="https://github.com/Chelayel/claude-relay">github.com/Chelayel/claude-relay</a>.</p>
+
         <p><i>Independent and unofficial — not affiliated with Anthropic. Part of the “Relay” family of
         IDE companions by Chelayel.</i></p>
     ]]></description>
 
     <change-notes><![CDATA[
-        <p><b>1.0.0</b> — First release.</p>
-        <ul>
-            <li>Native Claude Code chat panel — streaming transcript with live tool activity</li>
-            <li>Agent &amp; Ask modes; single-select agent persona</li>
-            <li>Editor-aware context, file &amp; image attachments</li>
-            <li>Project agents / skills / commands surfaced, with one-click access and rescan</li>
-            <li>Session history &amp; resume; model &amp; permission selectors; live usage</li>
-        </ul>
+        <p><b>1.0.2</b> — Claude Relay is now free and open source (MIT).
+        Source &amp; contributions: github.com/Chelayel/claude-relay.</p>
+        <p><b>1.0.1</b> — Fixed intermittent “Project context” bar visibility.</p>
+        <p><b>1.0.0</b> — First release: native Claude Code chat panel with streaming
+        transcript &amp; tool activity, Agent &amp; Ask modes, single-select agent persona,
+        editor-aware context, file &amp; image attachments, project agents/skills/commands,
+        session history, and model/permission selectors.</p>
     ]]></change-notes>
 
     <depends>com.intellij.modules.platform</depends>

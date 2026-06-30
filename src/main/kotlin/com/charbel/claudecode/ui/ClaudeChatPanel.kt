@@ -338,10 +338,11 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
     private fun installEnterToSend() {
         input.addKeyListener(object : KeyAdapter() {
             override fun keyPressed(e: KeyEvent) {
-                if (e.keyCode == KeyEvent.VK_ENTER && !e.isShiftDown) {
-                    e.consume()
-                    send()
-                }
+                if (e.keyCode != KeyEvent.VK_ENTER) return
+                // Plain Enter sends; Shift+Enter inserts a newline (the text area
+                // only binds bare Enter to insert-break, so we do it explicitly).
+                e.consume()
+                if (e.isShiftDown) input.replaceSelection("\n") else send()
             }
         })
     }

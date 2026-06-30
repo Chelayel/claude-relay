@@ -6,8 +6,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-06-30
+
 ### Changed
 - Relicensed under the **MIT License** — Claude Relay is now open source.
+- Plugin listing & README note the open-source license, repository link, and a
+  Getting Started guide.
+
+### Fixed
+- **Shift+Enter** now inserts a newline in the composer (previously did nothing).
+
+## [1.0.1] - 2026-06-29
+
+### Fixed
+- Intermittent "Project context" bar visibility — scan project assets
+  synchronously at startup and skip redundant relayouts.
 
 ## [1.0.0] - 2026-06-29
 

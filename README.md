@@ -6,7 +6,7 @@
 
 **Your `claude` CLI, relayed into a polished side-panel chat — no terminal juggling, no leaving your IDE.**
 
-*An unofficial, independent plugin. Not affiliated with Anthropic.*
+**Free & open source (MIT).** · *Unofficial, independent — not affiliated with Anthropic.*
 
 </div>
 
@@ -56,6 +56,25 @@ renders a real transcript, while staying aware of the file and lines you're actu
 ./gradlew runIde        # sandbox IDE with the plugin loaded
 ./gradlew buildPlugin    # -> build/distributions/claude-relay-<version>.zip
 ```
+
+## Getting started
+
+1. **Install the Claude Code CLI** and sign in once:
+   ```bash
+   npm install -g @anthropic-ai/claude-code
+   claude        # authenticate
+   ```
+2. **Install Claude Relay** — from the JetBrains Marketplace, or a release zip
+   (`Settings → Plugins → ⚙ → Install Plugin from Disk…`). Restart the IDE.
+3. **Open the tool window** — **Claude Relay** on the right edge of your IDE.
+4. **Ask away** — type a message and press **Enter** (Shift+Enter for a newline). Then:
+   - Switch **Agent** (reads, edits & runs) ↔ **Ask** (read-only Q&A) in the composer.
+   - **Select code** in the editor and it's auto-attached — ask *“explain/refactor this.”*
+   - Hit **＋** to attach files/images, pick a project **agent**/**skill**, or rescan.
+   - Type **`/`** to run a project slash command.
+   - Reopen a past chat from the **history** (clock) button; start fresh with **＋ New Chat**.
+
+That's it — Claude Relay drives the CLI in your project's context, so it can read, edit, and refactor across the whole codebase (in Agent mode).
 
 ## How it works
 
