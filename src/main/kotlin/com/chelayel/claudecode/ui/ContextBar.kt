@@ -42,7 +42,7 @@ class ContextBar(
         cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
         toolTipText = "Click to expand / collapse"
     }
-    private val rescan = JButton("Rescan", AllIcons.Actions.Refresh).apply {
+    private val rescan = JButton("Rescan", AllIcons.Actions.Find).apply {
         isFocusable = false
         isContentAreaFilled = false
         isBorderPainted = false

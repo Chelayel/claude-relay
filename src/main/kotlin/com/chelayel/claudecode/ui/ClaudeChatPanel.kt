@@ -750,7 +750,7 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
     ) {
         if (items.isEmpty()) return
         val builder = JBPopupFactory.getInstance().createPopupChooserBuilder(items)
-            .setRenderer(SimpleListCellRenderer.create<T>("") { text(it) })
+            .setRenderer(SimpleListCellRenderer.create<T> { label, value, _ -> label.text = text(value) })
             .setItemChosenCallback { onPick(it) }
         if (title != null) builder.setTitle(title)
         val popup = builder.createPopup()

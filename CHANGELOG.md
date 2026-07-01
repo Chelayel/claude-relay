@@ -6,6 +6,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 
 ## [Unreleased]
 
+## [1.0.7] - 2026-07-01
+
+### Changed
+- Compatibility: replaced another platform API scheduled for removal
+  (`SimpleListCellRenderer.create(String, Function)` → the `Customizer`-based
+  `create` overload), keeping the chooser-popup renderer compatible with
+  upcoming IntelliJ releases.
+- The context bar **Rescan** button now uses a distinct scan icon so it's no
+  longer confused with the toolbar **Refresh** action — Rescan re-discovers
+  `.claude` assets only, while Refresh also reloads models and usage limits.
+
+### Removed
+- Replaced the plugin logo and in-app marks with an original double-chevron
+  "relay" glyph; the previous Claude-branded starburst is no longer used.
+
 ## [1.0.3] - 2026-06-30
 
 ### Changed

@@ -31,6 +31,10 @@
     ]]></description>
 
     <change-notes><![CDATA[
+        <p><b>1.0.7</b> — New original plugin logo. The context bar “Rescan” button now
+        has a distinct icon so it’s no longer confused with the toolbar “Refresh”.
+        Additional compatibility fix for upcoming IntelliJ releases (replaced another
+        platform API scheduled for removal).</p>
         <p><b>1.0.3</b> — Compatibility fix for upcoming IntelliJ releases (replaced a
         platform API scheduled for removal). Shift+Enter inserts a newline.</p>
         <p><b>1.0.2</b> — Claude Relay is now free and open source (MIT).
