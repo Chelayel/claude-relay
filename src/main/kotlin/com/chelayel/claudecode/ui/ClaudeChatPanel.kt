@@ -13,6 +13,7 @@ import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.event.SelectionEvent
 import com.intellij.openapi.editor.event.SelectionListener
@@ -22,6 +23,7 @@ import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.ui.JBColor
@@ -143,6 +145,14 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
     private var running = false
     private var activeClient: ClaudeCliClient? = null
 
+    // ---- autonomous "write tests until coverage" loop ------------------------
+    // Active while the Auto-Test loop is running; drives repeated session turns
+    // until the model reports the target line coverage (or the round cap is hit).
+    private var testLoopActive = false
+    private var testLoopTarget = 0
+    private var testLoopRound = 0
+    private val testLoopBuffer = StringBuilder()
+
     // ---- usage / model state -------------------------------------------------
     private var lastCost: Double? = null
     private var ctxUsed = 0L
@@ -153,6 +163,10 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
     private var weeklyResetText: String? = null
     private var resolvedModel: String? = null
     private var modelChoices = MODEL_CHOICES
+    // Maps each picker label (may include a version, e.g. "Opus 4.8") to the
+    // `--model` alias to pass on the CLI ("opus"); "Default" maps to null.
+    private var modelAliases: Map<String, String?> =
+        MODEL_CHOICES.associateWith { label -> label.takeUnless { it == "Default" }?.lowercase() }
     private var lastTuiAt = 0L
 
     init {
@@ -326,6 +340,14 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
         },
         object : DumbAwareAction("Session History", "Resume a previous conversation in this project", AllIcons.Vcs.History) {
             override fun actionPerformed(e: AnActionEvent) = showHistory()
+        },
+        object : DumbAwareAction(
+            "Auto-Test to Coverage",
+            "Keep writing and running unit tests until a target line coverage is reached",
+            AllIcons.RunConfigurations.TestState.Run,
+        ) {
+            override fun actionPerformed(e: AnActionEvent) = startCoverageRun()
+            override fun update(e: AnActionEvent) { e.presentation.isEnabled = !running }
         },
         object : DumbAwareAction("Refresh", "Re-read models, usage limits, and project agents/skills", AllIcons.Actions.Refresh) {
             override fun actionPerformed(e: AnActionEvent) {
@@ -844,9 +866,7 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
     // ---- model picker & usage (scraped from the interactive TUI) -------------
 
     /** Maps the selected label to a `--model` value (null = account default). */
-    private fun modelCliValue(): String? = modelChip.selected
-        .takeUnless { it == "Default" }
-        ?.lowercase()
+    private fun modelCliValue(): String? = modelAliases[modelChip.selected]
 
     /**
      * Re-reads the live `/model` list and the Session/Weekly/Reset footer by
@@ -871,14 +891,24 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
     }
 
     private fun applyModels(models: List<ClaudeTui.Model>) {
-        val names = buildList {
-            add("Default")
-            models.filter { it.enabled && !it.name.equals("Default", true) }.forEach { add(it.name) }
+        // Label each pick with its concrete version when known ("Opus" → "Opus 4.8"),
+        // but keep the alias for the CLI. "Default" always stays the account default.
+        val aliases = LinkedHashMap<String, String?>()
+        aliases["Default"] = null
+        for (m in models) {
+            if (!m.enabled || m.name.equals("Default", true)) continue
+            val label = m.version?.takeIf { it.startsWith(m.name, ignoreCase = true) } ?: m.name
+            aliases.putIfAbsent(label, m.name.lowercase())
         }
-        if (names.size <= 1 || names == modelChoices) return
-        modelChoices = names
-        modelChip.setItems(names)
-        if (modelChip.selected !in names) modelChip.selected = "Default"
+        val labels = aliases.keys.toList()
+        LOG.warn("applyModels: incoming=${models.size} labels=$labels current=$modelChoices")
+        if (labels.size <= 1 || labels == modelChoices) return
+        val prevAlias = modelCliValue()
+        modelChoices = labels
+        modelAliases = aliases
+        modelChip.setItems(labels)
+        // Keep the user's pick across the relabel by matching on its CLI alias.
+        modelChip.selected = labels.firstOrNull { aliases[it] == prevAlias } ?: "Default"
     }
 
     // ---- send loop -----------------------------------------------------------
@@ -937,11 +967,181 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
     }
 
     private fun stop() {
+        testLoopActive = false
         activeClient?.cancel()
     }
 
+    // ---- autonomous "write tests until coverage" loop ------------------------
+
+    /** Ask for a target line coverage, then drive Claude to write tests until it's met. */
+    private fun startCoverageRun() {
+        if (running) return
+        val answer = Messages.showInputDialog(
+            project,
+            "Target line coverage to reach (percent). Claude will keep writing and running " +
+                "unit tests until it gets there, or until $MAX_TEST_ROUNDS rounds pass.",
+            "Auto-Test to Coverage",
+            Messages.getQuestionIcon(),
+            "80",
+            null,
+        )?.trim() ?: return
+        val target = answer.removeSuffix("%").trim().toIntOrNull()
+        if (target == null || target !in 1..100) {
+            Messages.showWarningDialog(project, "Please enter a whole number between 1 and 100.", "Auto-Test to Coverage")
+            return
+        }
+        val proceed = Messages.showYesNoDialog(
+            project,
+            "Claude will repeatedly run your test suite and create/modify test files on its own — " +
+                "all tool permissions are bypassed for this run — until it reaches $target% line " +
+                "coverage or $MAX_TEST_ROUNDS rounds pass.\n\nStart?",
+            "Auto-Test to Coverage",
+            "Start",
+            "Cancel",
+            Messages.getQuestionIcon(),
+        )
+        if (proceed != Messages.YES) return
+
+        testLoopActive = true
+        testLoopTarget = target
+        testLoopRound = 1
+        testLoopBuffer.setLength(0)
+        if (currentTitle == null) setSessionTitle("Auto-test to $target% coverage")
+        chat.addUser("▸ Auto-test: raise line coverage to $target%")
+        beginTestTurn()
+        // The first turn carries the full instructions; session memory then keeps
+        // them in context, so later rounds only need a short nudge.
+        sendCoverageTurn(
+            coverageSystemPrompt(target) + "\n\nBegin. Target line coverage: $target%. Discover the build " +
+                "and test tooling, run the suite with coverage, report the current number, then start " +
+                "closing the gap.",
+        )
+    }
+
+    /** Fire one turn of the coverage loop against the current session. */
+    private fun sendCoverageTurn(prompt: String) {
+        testLoopBuffer.setLength(0)
+        val client = ClaudeCliClient(workingDir, executable)
+        activeClient = client
+        client.send(prompt, sessionId, "bypassPermissions", modelCliValue(), null, emptyList(), testLoopListener)
+    }
+
+    /** Put the composer into the busy state used for a coverage turn. */
+    private fun beginTestTurn() {
+        chat.setBusy(true)
+        running = true
+        statusLabel.text = "Writing tests… (round $testLoopRound)"
+        busyIcon.isVisible = true
+        busyIcon.resume()
+        updateControls()
+    }
+
+    /** Streams like a normal turn, but accumulates text and decides whether to loop. */
+    private val testLoopListener = object : ClaudeCliClient.Listener {
+        override fun onSystemInit(sessionId: String) { this@ClaudeChatPanel.sessionId = sessionId }
+        override fun onAssistantText(text: String) {
+            testLoopBuffer.append(text)
+            chat.assistantChunk(text)
+        }
+        override fun onThinking(text: String) = chat.addThinking(text)
+        override fun onToolUse(name: String, inputSummary: String) {
+            chat.endAssistant()
+            chat.addToolUse(name, inputSummary)
+        }
+        override fun onToolResult(text: String, isError: Boolean) = chat.addToolResult(text, isError)
+        override fun onResult(sessionId: String?, costUsd: Double?, isError: Boolean, errorText: String?) {
+            sessionId?.let { this@ClaudeChatPanel.sessionId = it }
+            costUsd?.let { lastCost = it }
+            if (isError && errorText != null) { chat.addError(errorText); testLoopActive = false }
+        }
+        override fun onStats(model: String?, contextUsed: Long, contextWindow: Long) {
+            model?.let { resolvedModel = it }
+            if (contextWindow > 0) { ctxUsed = contextUsed; ctxWindow = contextWindow }
+            updateUsageLabel()
+        }
+        override fun onError(message: String) {
+            chat.addError(message)
+            testLoopActive = false
+        }
+        override fun onComplete() = onCoverageTurnComplete()
+    }
+
+    /** Parse the round's COVERAGE/STATUS markers and continue, finish, or stop. */
+    private fun onCoverageTurnComplete() {
+        chat.endAssistant()
+        if (!testLoopActive) { // stopped by the user, or errored mid-turn
+            endCoverageLoop("⏹ Auto-test stopped.")
+            return
+        }
+        val transcript = testLoopBuffer.toString()
+        val coverage = parseCoverage(transcript)
+        val done = parseStatus(transcript) == "DONE"
+        val reached = done || (coverage != null && coverage >= testLoopTarget)
+        val shown = coverage?.let { "%.1f%%".format(it) } ?: "unknown"
+
+        if (reached) {
+            endCoverageLoop("✅ Auto-test finished — coverage $shown (target $testLoopTarget%).")
+            return
+        }
+        if (testLoopRound >= MAX_TEST_ROUNDS) {
+            endCoverageLoop("⏹ Auto-test stopped after $MAX_TEST_ROUNDS rounds — coverage $shown, below $testLoopTarget%. Run it again to keep going.")
+            return
+        }
+        testLoopRound++
+        chat.addSystem("↻ Round $testLoopRound — coverage $shown, target $testLoopTarget%. Continuing…")
+        statusLabel.text = "Writing tests… (round $testLoopRound)"
+        sendCoverageTurn(
+            "Latest line coverage: $shown; target is $testLoopTarget%. Keep writing meaningful tests to " +
+                "close the gap, re-run coverage, and finish with the COVERAGE and STATUS lines.",
+        )
+    }
+
+    private fun endCoverageLoop(note: String) {
+        testLoopActive = false
+        chat.addSystem(note)
+        finishTurn()
+    }
+
+    private fun parseCoverage(text: String): Double? =
+        Regex("COVERAGE:\\s*([0-9]+(?:\\.[0-9]+)?)\\s*%?", RegexOption.IGNORE_CASE)
+            .findAll(text).lastOrNull()?.groupValues?.get(1)?.toDoubleOrNull()
+
+    private fun parseStatus(text: String): String? =
+        Regex("STATUS:\\s*(DONE|CONTINUE)", RegexOption.IGNORE_CASE)
+            .findAll(text).lastOrNull()?.groupValues?.get(1)?.uppercase()
+
+    /** The instruction that turns a turn into one round of the coverage loop. */
+    private fun coverageSystemPrompt(target: Int): String = """
+        You are running an autonomous unit-test writing loop inside the user's project.
+        GOAL: raise this project's automated LINE coverage to at least $target%.
+
+        Work in rounds. In each round, using your tools:
+        1. If you don't already know it, discover the build & test tooling (look for build.gradle(.kts),
+           pom.xml, package.json, pyproject.toml, etc.).
+        2. Run the test suite with coverage enabled via Bash — e.g. `./gradlew test jacocoTestReport`,
+           `mvn -q test`, `npm test -- --coverage`, `pytest --cov`. If no coverage tool is configured,
+           configure one first (e.g. add the JaCoCo Gradle plugin), then run it.
+        3. Read the generated coverage report (e.g. build/reports/jacoco/**/*.xml or .csv, coverage/lcov.info)
+           and determine the current overall LINE coverage percentage.
+        4. If it is below $target%, find the least-covered production code and write NEW, meaningful test
+           files (or extend existing ones), then re-run.
+
+        RULES:
+        - Never delete, skip, disable, or weaken existing tests, and never lower the target.
+        - Write real tests that exercise behavior and assert outcomes — no empty or trivially-passing tests
+          just to inflate the number.
+        - Fix any compilation or test failures you introduce before ending a round.
+        - Prefer the project's existing test framework and conventions.
+
+        When you stop calling tools to hand control back, END your message with exactly these two lines,
+        each on its own line with nothing after them:
+        COVERAGE: <latest measured overall line-coverage number>%
+        STATUS: DONE   (only if coverage is >= $target%) — otherwise STATUS: CONTINUE
+    """.trimIndent()
+
     private fun newSession() {
         if (running) stop()
+        testLoopActive = false
         sessionId = null
         ctxUsed = 0L
         setSessionTitle(null)
@@ -990,6 +1190,7 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
     }
 
     companion object {
+        private val LOG = logger<ClaudeChatPanel>()
         /** Curated choices matching Claude Code's `/model` picker. */
         private val MODEL_CHOICES = listOf("Default", "Opus", "Sonnet", "Haiku")
         private val ACCENT = Color(0xD9, 0x77, 0x57)
@@ -997,6 +1198,8 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
         private val IMAGE_EXTS = setOf("png", "jpg", "jpeg", "gif", "webp", "bmp")
         /** Tools denied in Ask mode so Claude reads & answers but never modifies. */
         private val ASK_DISALLOWED_TOOLS = listOf("Edit", "Write", "MultiEdit", "NotebookEdit", "Bash")
+        /** Safety cap on autonomous test-writing rounds before we hand control back. */
+        private const val MAX_TEST_ROUNDS = 12
     }
 
     private fun updateControls() {

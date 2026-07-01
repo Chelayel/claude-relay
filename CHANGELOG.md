@@ -6,6 +6,34 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 
 ## [Unreleased]
 
+## [1.0.9] - 2026-07-01
+
+### Fixed
+- Model picker sometimes stayed on the bare fallback list (no version numbers)
+  when the `/model` scrape lost a race against a slow `claude` start-up (e.g.
+  while MCP servers initialize). The scrape now waits longer for the CLI and
+  retries opening the menu up to three times before giving up.
+
+### Changed
+- Added diagnostic logging around the TUI scrape and model-list update
+  (`TUI scrape …`, `applyModels …`) to make picker issues traceable from
+  `idea.log`.
+
+## [1.0.8] - 2026-07-01
+
+### Added
+- **Auto-Test to Coverage** toolbar action: pick a target line-coverage
+  percentage and Claude autonomously discovers the build/test tooling, runs the
+  suite with coverage, and keeps writing meaningful tests round after round
+  until the target is met (or a safety cap of 12 rounds is reached). Runs with
+  tool permissions bypassed; **Stop** or **New Chat** ends the loop.
+
+### Changed
+- The model picker now shows the concrete Claude version for each choice
+  (e.g. **Opus 4.8**, **Sonnet 4.6**, **Haiku 4.5**) instead of the bare alias,
+  scraped from the `/model` menu. The `--model` alias passed to the CLI is
+  unchanged, and your current pick is preserved across the relabel.
+
 ## [1.0.7] - 2026-07-01
 
 ### Changed

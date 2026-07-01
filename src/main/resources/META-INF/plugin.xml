@@ -31,6 +31,13 @@
     ]]></description>
 
     <change-notes><![CDATA[
+        <p><b>1.0.9</b> — Reliability fix: the model picker no longer gets stuck on the
+        bare fallback list when the <code>/model</code> scrape races a slow CLI start-up;
+        it now waits longer and retries. Added diagnostic logging for picker issues.</p>
+        <p><b>1.0.8</b> — New <b>Auto-Test to Coverage</b> toolbar action: pick a target
+        line-coverage percentage and Claude keeps writing and running unit tests until it
+        reaches it. The model picker now shows the concrete Claude version for each choice
+        (e.g. Opus 4.8, Sonnet 4.6, Haiku 4.5).</p>
         <p><b>1.0.7</b> — New original plugin logo. The context bar “Rescan” button now
         has a distinct icon so it’s no longer confused with the toolbar “Refresh”.
         Additional compatibility fix for upcoming IntelliJ releases (replaced another

@@ -29,7 +29,9 @@ object ClaudeTui {
     private val VBAR = Char(0x2502)        // │ box border
     private val CHECK = Char(0x2714)       // ✔ default marker
 
-    data class Model(val name: String, val enabled: Boolean, val isDefault: Boolean)
+    /** [name] is the `--model` alias (e.g. "Opus"); [version] is the concrete
+     *  model it maps to (e.g. "Opus 4.8"), scraped from the menu description. */
+    data class Model(val name: String, val version: String?, val enabled: Boolean, val isDefault: Boolean)
     data class Limits(
         val sessionPct: Double?,
         val resetText: String?,
@@ -42,9 +44,16 @@ object ClaudeTui {
     fun fetch(executable: String, workingDir: String, onResult: (Snapshot) -> Unit) {
         ApplicationManager.getApplication().executeOnPooledThread {
             val snap = runCatching { scrape(executable, workingDir) }.getOrElse {
-                log.info("TUI scrape failed: ${it.message}")
+                log.warn("TUI scrape failed: ${it.message}", it)
                 null
-            } ?: return@executeOnPooledThread
+            } ?: run {
+                log.warn("TUI scrape returned no snapshot — model list stays on the fallback.")
+                return@executeOnPooledThread
+            }
+            log.warn(
+                "TUI scrape OK — models=" +
+                    snap.models.joinToString { "${it.name}[v=${it.version},enabled=${it.enabled}]" },
+            )
             ApplicationManager.getApplication().invokeLater { onResult(snap) }
         }
     }
@@ -85,13 +94,22 @@ object ClaudeTui {
 
         try {
             // Wait for the TUI to load; answer a trust prompt if one appears.
-            waitUntil(7000) { val s = snapshot(); s.contains("shortcuts") || s.contains("Welcome") || s.contains("Bypassing") }
-            if (snapshot().contains("trust", ignoreCase = true)) { send("\r"); Thread.sleep(900) }
+            waitUntil(9000) { val s = snapshot(); s.contains("shortcuts") || s.contains("Welcome") || s.contains("Bypassing") }
+            if (snapshot().contains("trust", ignoreCase = true)) { send("\r"); Thread.sleep(1200) }
 
-            // Open the model picker, let it render, then dismiss with ESC (no change).
-            send("/model\r")
-            waitUntil(6000) { snapshot().contains("Select model") }
-            Thread.sleep(800)
+            // Open the model picker and wait for it to render. On a slow start
+            // (e.g. MCP init) the CLI may swallow the first `/model`, so retry a
+            // couple of times, dismissing any half-open state before each attempt.
+            var opened = false
+            for (attempt in 1..3) {
+                send("/model\r")
+                opened = waitUntilTrue(6000) { snapshot().contains("Select model") }
+                if (opened) break
+                log.warn("TUI /model did not open (attempt $attempt); retrying")
+                send(ESC); Thread.sleep(600)
+            }
+            if (!opened) log.warn("TUI /model never rendered a 'Select model' menu; parsing whatever was captured")
+            Thread.sleep(900)
             val captured = snapshot()
             send(ESC)
             Thread.sleep(200)
@@ -103,6 +121,16 @@ object ClaudeTui {
             runCatching { process.destroy() }
             runCatching { reader.join(500) }
         }
+    }
+
+    /** Like [waitUntil] but reports whether the condition was met before timing out. */
+    private inline fun waitUntilTrue(timeoutMs: Long, cond: () -> Boolean): Boolean {
+        val end = System.currentTimeMillis() + timeoutMs
+        while (System.currentTimeMillis() < end) {
+            if (cond()) return true
+            Thread.sleep(120)
+        }
+        return false
     }
 
     private inline fun waitUntil(timeoutMs: Long, cond: () -> Boolean) {
@@ -129,7 +157,11 @@ object ClaudeTui {
             if (name.length < 2 || name.equals("Learn", true)) continue
             val disabled = line.contains("(disabled)", true) || line.contains("unavailable", true)
             val isDefault = line.contains(CHECK) || line.contains("recommended", true)
-            models.putIfAbsent(name, Model(name, !disabled, isDefault))
+            // The description after the alias opens with the concrete model version,
+            // e.g. "Opus 4.8 …", "Sonnet 4.6 …" — pull the first such token out.
+            val rest = line.substring(m.range.last + 1)
+            val version = Regex("([A-Z][a-zA-Z]+\\s+[0-9]+(?:\\.[0-9]+)?)").find(rest)?.groupValues?.get(1)
+            models.putIfAbsent(name, Model(name, version, !disabled, isDefault))
         }
         return models.values.toList()
     }
