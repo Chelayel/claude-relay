@@ -6,6 +6,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 
 ## [Unreleased]
 
+## [1.0.11] - 2026-07-06
+
 ### Changed
 - Each conversation now runs through a single long-lived `claude` process using
   the realtime streaming protocol (`--input-format stream-json`), instead of
