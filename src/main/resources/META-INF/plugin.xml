@@ -31,6 +31,11 @@
     ]]></description>
 
     <change-notes><![CDATA[
+        <p><b>1.0.12</b> — Compatibility fix for upcoming IntelliJ releases (replaced a
+        platform API scheduled for removal in the popup choosers).</p>
+        <p><b>1.0.11</b> — Much lower token usage in longer chats: each conversation now
+        runs through a single persistent Claude Code session, keeping the prompt cache
+        warm across turns instead of re-sending the whole transcript every message.</p>
         <p><b>1.0.10</b> — The tool-window icon now uses the Claude accent red so it
         matches the plugin icon instead of looking washed-out in dark themes.</p>
         <p><b>1.0.9</b> — Reliability fix: the model picker no longer gets stuck on the

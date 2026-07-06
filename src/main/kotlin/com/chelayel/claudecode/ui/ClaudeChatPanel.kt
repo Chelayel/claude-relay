@@ -62,6 +62,7 @@ import javax.swing.Icon
 import javax.swing.ImageIcon
 import javax.swing.JButton
 import javax.swing.JComponent
+import javax.swing.JList
 import javax.swing.JPanel
 import javax.swing.ScrollPaneConstants
 import javax.swing.event.DocumentEvent
@@ -776,7 +777,11 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
     ) {
         if (items.isEmpty()) return
         val builder = JBPopupFactory.getInstance().createPopupChooserBuilder(items)
-            .setRenderer(SimpleListCellRenderer.create<T> { label, value, _ -> label.text = text(value) })
+            .setRenderer(object : SimpleListCellRenderer<T>() {
+                override fun customize(list: JList<out T>, value: T, index: Int, selected: Boolean, hasFocus: Boolean) {
+                    this.text = text(value)
+                }
+            })
             .setItemChosenCallback { onPick(it) }
         if (title != null) builder.setTitle(title)
         val popup = builder.createPopup()

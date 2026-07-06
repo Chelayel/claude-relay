@@ -6,6 +6,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 
 ## [Unreleased]
 
+## [1.0.12] - 2026-07-06
+
+### Fixed
+- Compatibility with upcoming IntelliJ releases: replaced a use of
+  `SimpleListCellRenderer.create(...)` — a platform API scheduled for removal —
+  with a direct `SimpleListCellRenderer` subclass in the popup choosers (model /
+  permission / session-history / slash-command pickers). No behavior change.
+
 ## [1.0.11] - 2026-07-06
 
 ### Changed
