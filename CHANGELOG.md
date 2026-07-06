@@ -6,6 +6,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 
 ## [Unreleased]
 
+### Changed
+- Each conversation now runs through a single long-lived `claude` process using
+  the realtime streaming protocol (`--input-format stream-json`), instead of
+  spawning a fresh `claude -p --resume` per message. This keeps the prompt cache
+  warm across turns the way the interactive CLI does — the old per-turn resume
+  re-sent the whole transcript and, once the ~5-minute cache went cold, re-billed
+  it as new input every turn. Result: dramatically lower token usage on
+  multi-turn chats. The process only restarts when a launch setting changes
+  (model / permission mode / agent) or the session changes (New Chat, resume).
+
+## [1.0.10] - 2026-07-02
+
+### Changed
+- The tool-window stripe icon is now the Claude accent red (`#D97757`) to match
+  the plugin icon, instead of the muted gray that looked white in dark themes.
+
 ## [1.0.9] - 2026-07-01
 
 ### Fixed

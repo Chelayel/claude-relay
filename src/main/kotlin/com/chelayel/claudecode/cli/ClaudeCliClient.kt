@@ -6,13 +6,27 @@ import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.logger
 import java.io.BufferedReader
+import java.io.BufferedWriter
 import java.io.InputStreamReader
+import java.io.OutputStreamWriter
 import java.nio.charset.StandardCharsets
 
 /**
- * Drives a single Claude Code turn through the CLI using the `stream-json`
- * output format. One [send] call spawns one `claude -p` process; multi-turn
- * memory is preserved by passing the previous `session_id` via `--resume`.
+ * Drives Claude Code through a single, long-lived CLI process using the
+ * realtime streaming protocol (`--input-format stream-json --output-format
+ * stream-json`). Each [send] writes one user message to the process's stdin and
+ * the shared reader thread streams the reply back through [Listener].
+ *
+ * Keeping one process alive for the whole conversation is what makes this cheap:
+ * a fresh `claude -p --resume` per turn re-sends the entire transcript and, once
+ * the ~5-minute prompt cache goes cold, re-bills it as new input every turn. A
+ * persistent process behaves like the interactive CLI — the prompt cache stays
+ * warm, so each turn costs roughly its new tokens plus cheap cache reads.
+ *
+ * The process is only (re)started when it isn't running, when a launch-time
+ * setting changes (model / permission mode / agent / disallowed tools), or when
+ * the target session id changes (New Chat, resume-from-history). A cancel kills
+ * the process; the next [send] resumes the session via `--resume`.
  *
  * All [Listener] callbacks are delivered on the Swing EDT.
  */
@@ -34,15 +48,55 @@ class ClaudeCliClient(
         fun onComplete() {}
     }
 
+    /** Launch-time settings; a change forces the process to restart. */
+    private data class Config(
+        val permissionMode: String,
+        val model: String?,
+        val agent: String?,
+        val disallowed: List<String>,
+    )
+
+    /** Guards process lifecycle (start / restart / stop) and turn bookkeeping. */
+    private val lock = Any()
+
     @Volatile
     private var process: Process? = null
+    private var writer: BufferedWriter? = null
+
+    /** Settings the live process was launched with. */
+    private var activeConfig: Config? = null
+
+    /** Session id the live process is currently running (from `init` / `result`). */
+    @Volatile
+    private var liveSessionId: String? = null
+
+    /** Listener that owns the in-flight turn. */
+    @Volatile
+    private var currentListener: Listener? = null
+
+    @Volatile
+    private var turnActive = false
 
     @Volatile
     private var cancelled = false
 
+    @Volatile
+    private var closed = false
+
+    /** Interrupt the current turn. Kills the process; the next [send] resumes. */
     fun cancel() {
-        cancelled = true
-        process?.destroy()
+        synchronized(lock) {
+            cancelled = true
+            stopProcess()
+        }
+    }
+
+    /** Shut down for good (call from the owner's dispose). */
+    fun close() {
+        synchronized(lock) {
+            closed = true
+            stopProcess()
+        }
     }
 
     fun send(
@@ -54,19 +108,65 @@ class ClaudeCliClient(
         disallowedTools: List<String> = emptyList(),
         listener: Listener,
     ) {
+        val cfg = Config(permissionMode, model, agent, disallowedTools)
+        // Launching and writing block briefly; keep the EDT free (per project convention).
+        ApplicationManager.getApplication().executeOnPooledThread {
+            synchronized(lock) {
+                if (closed) return@executeOnPooledThread
+                cancelled = false
+                currentListener = listener
+                turnActive = true
+
+                // Reuse the running process only when nothing launch-critical changed
+                // and it's still driving the same session — otherwise the CLI would
+                // ignore the new model/permission/session until relaunched.
+                val reusable = process?.isAlive == true &&
+                    activeConfig == cfg &&
+                    liveSessionId == sessionId
+                if (!reusable) {
+                    try {
+                        startProcess(cfg, resumeId = sessionId)
+                    } catch (e: Exception) {
+                        log.warn("Failed to launch Claude", e)
+                        turnActive = false
+                        edt { listener.onError(e.message ?: "Failed to launch Claude. Is the CLI installed?") }
+                        edt { listener.onComplete() }
+                        return@executeOnPooledThread
+                    }
+                }
+
+                try {
+                    writeUserMessage(prompt)
+                } catch (e: Exception) {
+                    log.warn("Failed to send prompt to Claude", e)
+                    turnActive = false
+                    stopProcess()
+                    edt { listener.onError(e.message ?: "Lost connection to Claude.") }
+                    edt { listener.onComplete() }
+                }
+            }
+        }
+    }
+
+    // ---- process lifecycle (all under `lock`) --------------------------------
+
+    private fun startProcess(cfg: Config, resumeId: String?) {
+        stopProcess()
+
         val cmd = GeneralCommandLine(executable).apply {
             withWorkDirectory(workingDir)
             charset = StandardCharsets.UTF_8
-            addParameters("-p", prompt)
+            addParameter("--print")
+            addParameters("--input-format", "stream-json")
             addParameters("--output-format", "stream-json")
             addParameter("--verbose")
-            if (!sessionId.isNullOrBlank()) addParameters("--resume", sessionId)
-            if (permissionMode.isNotBlank()) addParameters("--permission-mode", permissionMode)
-            if (!model.isNullOrBlank()) addParameters("--model", model)
-            if (!agent.isNullOrBlank()) addParameters("--agent", agent)
-            if (disallowedTools.isNotEmpty()) {
+            if (!resumeId.isNullOrBlank()) addParameters("--resume", resumeId)
+            if (cfg.permissionMode.isNotBlank()) addParameters("--permission-mode", cfg.permissionMode)
+            if (!cfg.model.isNullOrBlank()) addParameters("--model", cfg.model)
+            if (!cfg.agent.isNullOrBlank()) addParameters("--agent", cfg.agent)
+            if (cfg.disallowed.isNotEmpty()) {
                 addParameter("--disallowedTools")
-                addParameters(disallowedTools)
+                addParameters(cfg.disallowed)
             }
         }
 
@@ -76,59 +176,109 @@ class ClaudeCliClient(
         env["PATH"] = (ClaudeCli.extraPathEntries() + existingPath).filter { it.isNotBlank() }.joinToString(":")
         cmd.withEnvironment(env)
 
-        ApplicationManager.getApplication().executeOnPooledThread {
-            runProcess(cmd, listener)
-        }
+        val p = cmd.createProcess()
+        process = p
+        writer = BufferedWriter(OutputStreamWriter(p.outputStream, StandardCharsets.UTF_8))
+        activeConfig = cfg
+        liveSessionId = resumeId
+
+        // Written by the stderr drain thread, read by readLoop — use a thread-safe buffer.
+        val stderr = StringBuffer()
+        Thread {
+            runCatching {
+                BufferedReader(InputStreamReader(p.errorStream, StandardCharsets.UTF_8)).forEachLine {
+                    stderr.appendLine(it)
+                }
+            }
+        }.apply { isDaemon = true; name = "claude-stderr"; start() }
+
+        Thread { readLoop(p, stderr) }.apply { isDaemon = true; name = "claude-reader"; start() }
     }
 
-    private fun runProcess(cmd: GeneralCommandLine, listener: Listener) {
-        val stderr = StringBuilder()
-        try {
-            val p = cmd.createProcess()
-            process = p
+    private fun stopProcess() {
+        writer?.let { runCatching { it.close() } }
+        writer = null
+        process?.let { runCatching { it.destroy() } }
+        process = null
+        activeConfig = null
+    }
 
-            val errThread = Thread {
-                runCatching {
-                    BufferedReader(InputStreamReader(p.errorStream, StandardCharsets.UTF_8)).forEachLine {
-                        stderr.appendLine(it)
-                    }
-                }
-            }.apply { isDaemon = true; start() }
+    private fun writeUserMessage(prompt: String) {
+        val msg = JsonObject().apply {
+            addProperty("type", "user")
+            add("message", JsonObject().apply {
+                addProperty("role", "user")
+                addProperty("content", prompt)
+            })
+        }
+        val w = writer ?: throw IllegalStateException("Claude process is not running.")
+        w.write(msg.toString())
+        w.write("\n")
+        w.flush()
+    }
 
+    // ---- output stream --------------------------------------------------------
+
+    private fun readLoop(p: Process, stderr: StringBuffer) {
+        runCatching {
             BufferedReader(InputStreamReader(p.inputStream, StandardCharsets.UTF_8)).useLines { lines ->
                 for (line in lines) {
-                    if (cancelled) break
+                    if (process !== p) break // superseded by a newer process
                     val trimmed = line.trim()
                     if (trimmed.isEmpty()) continue
-                    runCatching { handleLine(trimmed, listener) }
+                    runCatching { handleLine(trimmed) }
                         .onFailure { log.warn("Failed to parse Claude output line: $trimmed", it) }
                 }
             }
+        }.onFailure { log.warn("Claude reader failed", it) }
 
-            val code = p.waitFor()
-            errThread.join(500)
+        val code = runCatching { p.waitFor() }.getOrDefault(-1)
 
-            if (cancelled) {
-                edt { listener.onError("Stopped.") }
-            } else if (code != 0) {
-                val msg = stderr.toString().trim().ifEmpty { "Claude exited with code $code." }
-                edt { listener.onError(msg) }
+        // The stream ended: the process exited (normal turn completion keeps it
+        // alive, so reaching here mid-turn means it died). Report only if this is
+        // still the current process and a turn was in flight.
+        var listener: Listener? = null
+        var errorMsg: String? = null
+        synchronized(lock) {
+            // A newer process was launched (restart for a settings/session change):
+            // it owns the state and the current turn, so this one stays silent.
+            // `process == null` means cancel()/close() killed us — still report so
+            // the UI leaves its running state.
+            if (process != null && process !== p) return
+            if (process === p) {
+                process = null
+                writer = null
+                activeConfig = null
             }
-        } catch (e: Exception) {
-            log.warn("Claude process failed", e)
-            edt { listener.onError(e.message ?: "Failed to launch Claude. Is the CLI installed?") }
-        } finally {
-            process = null
-            edt { listener.onComplete() }
+            if (turnActive) {
+                turnActive = false
+                if (!closed) {
+                    listener = currentListener
+                    errorMsg = when {
+                        cancelled -> "Stopped."
+                        code != 0 -> stderr.toString().trim().ifEmpty { "Claude exited with code $code." }
+                        else -> "Claude ended the session unexpectedly."
+                    }
+                }
+            }
+        }
+        listener?.let { l ->
+            errorMsg?.let { m -> edt { l.onError(m) } }
+            edt { l.onComplete() }
         }
     }
 
-    private fun handleLine(line: String, listener: Listener) {
+    private fun handleLine(line: String) {
+        if (closed) return // owner disposed; don't touch a torn-down panel
+        val listener = currentListener ?: return
         val obj = JsonParser.parseString(line).asJsonObject
         when (obj.str("type")) {
             "system" -> {
                 if (obj.str("subtype") == "init") {
-                    obj.str("session_id")?.let { id -> edt { listener.onSystemInit(id) } }
+                    obj.str("session_id")?.let { id ->
+                        liveSessionId = id
+                        edt { listener.onSystemInit(id) }
+                    }
                 }
             }
 
@@ -167,6 +317,7 @@ class ClaudeCliClient(
 
             "result" -> {
                 val sid = obj.str("session_id")
+                sid?.let { liveSessionId = it }
                 val cost = obj.get("total_cost_usd")?.takeIf { it.isJsonPrimitive }?.asDouble
                 val isError = obj.str("subtype") != "success"
                 val errText = if (isError) obj.str("result") ?: "Run did not complete successfully." else null
@@ -180,6 +331,10 @@ class ClaudeCliClient(
                 val model = modelUsage?.keySet()?.firstOrNull()
                 val window = model?.let { modelUsage.getAsJsonObject(it).long("contextWindow") } ?: 0L
                 edt { listener.onStats(model, contextUsed, window) }
+
+                // Turn done, but the process stays alive for the next message.
+                turnActive = false
+                edt { listener.onComplete() }
             }
         }
     }

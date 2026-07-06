@@ -31,6 +31,8 @@
     ]]></description>
 
     <change-notes><![CDATA[
+        <p><b>1.0.10</b> — The tool-window icon now uses the Claude accent red so it
+        matches the plugin icon instead of looking washed-out in dark themes.</p>
         <p><b>1.0.9</b> — Reliability fix: the model picker no longer gets stuck on the
         bare fallback list when the <code>/model</code> scrape races a slow CLI start-up;
         it now waits longer and retries. Added diagnostic logging for picker issues.</p>

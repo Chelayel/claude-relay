@@ -143,7 +143,11 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
     private val workingDir = project.basePath ?: System.getProperty("user.dir")
     private var sessionId: String? = null
     private var running = false
-    private var activeClient: ClaudeCliClient? = null
+
+    // One long-lived CLI process drives the whole conversation: it keeps the
+    // prompt cache warm across turns instead of re-billing the transcript on
+    // every send. See [ClaudeCliClient].
+    private val cli = ClaudeCliClient(workingDir, executable)
 
     // ---- autonomous "write tests until coverage" loop ------------------------
     // Active while the Auto-Test loop is running; drives repeated session turns
@@ -940,9 +944,7 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
         val disallowed = if (askMode) ASK_DISALLOWED_TOOLS else emptyList()
         val model = modelCliValue()
 
-        val client = ClaudeCliClient(workingDir, executable)
-        activeClient = client
-        client.send(prompt, sessionId, permission, model, agent, disallowed, object : ClaudeCliClient.Listener {
+        cli.send(prompt, sessionId, permission, model, agent, disallowed, object : ClaudeCliClient.Listener {
             override fun onSystemInit(sessionId: String) { this@ClaudeChatPanel.sessionId = sessionId }
             override fun onAssistantText(text: String) = chat.assistantChunk(text)
             override fun onThinking(text: String) = chat.addThinking(text)
@@ -968,7 +970,7 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
 
     private fun stop() {
         testLoopActive = false
-        activeClient?.cancel()
+        cli.cancel()
     }
 
     // ---- autonomous "write tests until coverage" loop ------------------------
@@ -1021,9 +1023,7 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
     /** Fire one turn of the coverage loop against the current session. */
     private fun sendCoverageTurn(prompt: String) {
         testLoopBuffer.setLength(0)
-        val client = ClaudeCliClient(workingDir, executable)
-        activeClient = client
-        client.send(prompt, sessionId, "bypassPermissions", modelCliValue(), null, emptyList(), testLoopListener)
+        cli.send(prompt, sessionId, "bypassPermissions", modelCliValue(), null, emptyList(), testLoopListener)
     }
 
     /** Put the composer into the busy state used for a coverage turn. */
@@ -1153,7 +1153,6 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
 
     private fun finishTurn() {
         running = false
-        activeClient = null
         chat.endAssistant()
         chat.setBusy(false)
         busyIcon.isVisible = false
@@ -1210,7 +1209,7 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
     }
 
     override fun dispose() {
-        activeClient?.cancel()
+        cli.close()
         runCatching { tempDir.deleteRecursively() }
     }
 
