@@ -75,8 +75,17 @@ import javax.swing.event.DocumentListener
  */
 class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Disposable {
 
+    // JCEF ships in the split "client" classpath (lib/app-client.jar). On some IDE
+    // builds/environments (e.g. the 2025.x frontend split, a JBR without JCEF) that
+    // jar isn't on the plugin's classloader, so touching JBCefApp throws
+    // NoClassDefFoundError. Probe defensively — including isSupported() itself — and
+    // degrade to the editor-pane transcript instead of failing tool-window init.
     private val chat: ChatView =
-        if (JBCefApp.isSupported()) ChatWebView(this) else TranscriptView()
+        try {
+            if (JBCefApp.isSupported()) ChatWebView(this) else TranscriptView()
+        } catch (t: Throwable) {
+            TranscriptView()
+        }
 
     private val input = JBTextArea(3, 40).apply {
         lineWrap = true
