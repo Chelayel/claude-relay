@@ -1,0 +1,4 @@
+<!-- Loaded only when the JCEF plugin (com.intellij.modules.jcef) is present.
+     No extra wiring is needed today; the panel checks JBCefApp.isSupported()
+     at runtime. This file exists so the optional dependency above is valid. -->
+<idea-plugin/>

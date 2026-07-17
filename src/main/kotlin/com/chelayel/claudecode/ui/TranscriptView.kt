@@ -8,7 +8,6 @@ import com.intellij.util.ui.UIUtil
 import java.awt.Color
 import javax.swing.JComponent
 import javax.swing.JEditorPane
-import javax.swing.text.html.HTMLEditorKit
 
 /**
  * Theme-aware HTML transcript. Messages are appended as styled blocks; a
@@ -19,14 +18,10 @@ class TranscriptView : ChatView {
     private val pane = JEditorPane().apply {
         contentType = "text/html"
         isEditable = false
-        editorKit = HTMLEditorKit()
-        // Render HTML at the IDE's actual (HiDPI-scaled) UI font. Otherwise the
-        // default kit interprets CSS `px` against 96 DPI on top of the display's
-        // HiDPI scaling and the text comes out oversized. HONOR_DISPLAY_PROPERTIES
-        // makes it use this component's font as the base size instead — so the CSS
-        // below deliberately omits any body font-size/font-family.
-        putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, true)
-        font = UIUtil.getLabelFont()
+        // HiDPI-aware kit so CSS px sizes render at the correct scale (the plain
+        // HTMLEditorKit inflates them against 96 DPI) while keeping the stylesheet
+        // — bubbles, spacing, colors — intact.
+        editorKit = com.intellij.util.ui.JBHtmlEditorKit()
         border = JBUI.Borders.empty(4, 8)
         background = UIUtil.getTextFieldBackground()
     }

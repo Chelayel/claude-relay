@@ -31,6 +31,10 @@
     ]]></description>
 
     <change-notes><![CDATA[
+        <p><b>1.0.15</b> — Restored the rich chat transcript on IntelliJ 2026.2+ (build 262),
+        where JCEF became a separate bundled plugin — the panel now depends on it optionally
+        so the in-browser view works again instead of dropping to plain text. The plain-text
+        fallback also renders at the correct font size when JCEF isn't available.</p>
         <p><b>1.0.14</b> — Fixed oversized text in the plain-text transcript fallback
         (used when JCEF isn't available): it now renders at the IDE's UI font size
         instead of an inflated one.</p>
@@ -68,6 +72,11 @@
     ]]></change-notes>
 
     <depends>com.intellij.modules.platform</depends>
+    <!-- JCEF moved into a bundled plugin in 2026.2+ (build 262). Depend on it
+         optionally so the rich in-browser transcript is available where JCEF
+         exists, while the plugin still loads (and falls back to the plain-text
+         transcript) on IDEs/environments without it. -->
+    <depends optional="true" config-file="jcef.xml">com.intellij.modules.jcef</depends>
 
     <extensions defaultExtensionNs="com.intellij">
         <toolWindow
