@@ -21,7 +21,7 @@ class TranscriptView : ChatView {
         // HiDPI-aware kit so CSS px sizes render at the correct scale (the plain
         // HTMLEditorKit inflates them against 96 DPI) while keeping the stylesheet
         // — bubbles, spacing, colors — intact.
-        editorKit = com.intellij.util.ui.JBHtmlEditorKit()
+        editorKit = com.intellij.util.ui.HTMLEditorKitBuilder().build()
         border = JBUI.Borders.empty(4, 8)
         background = UIUtil.getTextFieldBackground()
     }
