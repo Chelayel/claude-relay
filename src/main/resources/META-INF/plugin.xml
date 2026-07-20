@@ -31,6 +31,10 @@
     ]]></description>
 
     <change-notes><![CDATA[
+        <p><b>1.0.17</b> — Questions now work. When Claude wanted to ask a multiple-choice
+        question it used its interactive picker, which has no UI in the CLI's headless mode
+        and auto-resolved to “no answer was selected.” Claude now asks in plain text instead,
+        so you can just type your answer.</p>
         <p><b>1.0.15</b> — Restored the rich chat transcript on IntelliJ 2026.2+ (build 262),
         where JCEF became a separate bundled plugin — the panel now depends on it optionally
         so the in-browser view works again instead of dropping to plain text. The plain-text

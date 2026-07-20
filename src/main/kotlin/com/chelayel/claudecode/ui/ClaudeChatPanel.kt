@@ -955,7 +955,7 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
         // Ask mode answers with read tools only; denying the mutators is the guard,
         // and acceptEdits keeps the remaining (safe) tools from stalling on prompts.
         val permission = if (askMode) "acceptEdits" else permissionChip.selected.cliValue
-        val disallowed = if (askMode) ASK_DISALLOWED_TOOLS else emptyList()
+        val disallowed = ALWAYS_DISALLOWED_TOOLS + if (askMode) ASK_DISALLOWED_TOOLS else emptyList()
         val model = modelCliValue()
 
         cli.send(prompt, sessionId, permission, model, agent, disallowed, object : ClaudeCliClient.Listener {
@@ -1037,7 +1037,7 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
     /** Fire one turn of the coverage loop against the current session. */
     private fun sendCoverageTurn(prompt: String) {
         testLoopBuffer.setLength(0)
-        cli.send(prompt, sessionId, "bypassPermissions", modelCliValue(), null, emptyList(), testLoopListener)
+        cli.send(prompt, sessionId, "bypassPermissions", modelCliValue(), null, ALWAYS_DISALLOWED_TOOLS, testLoopListener)
     }
 
     /** Put the composer into the busy state used for a coverage turn. */
@@ -1209,6 +1209,14 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
         private val ACCENT = Color(0xD9, 0x77, 0x57)
         private val STOP_BG = Color(0x8A, 0x46, 0x42)
         private val IMAGE_EXTS = setOf("png", "jpg", "jpeg", "gif", "webp", "bmp")
+        /**
+         * Always denied. AskUserQuestion is Claude's interactive multiple-choice
+         * picker, but the CLI's `--print` stream-json mode has no interactive
+         * channel — in every permission mode it auto-resolves the call to "no
+         * answer was selected" and moves on. Denying the tool makes Claude ask
+         * the question as plain text instead, which the user can answer by typing.
+         */
+        private val ALWAYS_DISALLOWED_TOOLS = listOf("AskUserQuestion")
         /** Tools denied in Ask mode so Claude reads & answers but never modifies. */
         private val ASK_DISALLOWED_TOOLS = listOf("Edit", "Write", "MultiEdit", "NotebookEdit", "Bash")
         /** Safety cap on autonomous test-writing rounds before we hand control back. */
