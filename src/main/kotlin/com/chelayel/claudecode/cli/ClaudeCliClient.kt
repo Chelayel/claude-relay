@@ -46,7 +46,36 @@ class ClaudeCliClient(
         fun onStats(model: String?, contextUsed: Long, contextWindow: Long) {}
         fun onError(message: String) {}
         fun onComplete() {}
+
+        /**
+         * Claude wants to use a tool the current permission mode won't grant on
+         * its own. The implementation must eventually call [respondToPermission]
+         * with the same [PermissionRequest.requestId] — until it does, the CLI
+         * sits waiting on that tool. Delivered on the EDT.
+         */
+        fun onPermissionRequest(request: PermissionRequest) {}
+
+        /** A pending request the CLI withdrew (the turn was interrupted). */
+        fun onPermissionCancelled(requestId: String) {}
+
+        /** A tool call the CLI refused outright, without asking us. */
+        fun onPermissionDenied(toolName: String, message: String) {}
     }
+
+    /** One `can_use_tool` ask from the CLI, waiting on an answer. */
+    data class PermissionRequest(
+        val requestId: String,
+        val toolName: String,
+        val displayName: String,
+        /** The CLI's own one-line summary of the call, e.g. the file being edited. */
+        val description: String,
+        /** The tool's arguments, echoed back verbatim when we allow it. */
+        val input: JsonObject?,
+        val toolUseId: String?,
+    )
+
+    /** The user's answer to a [PermissionRequest]. */
+    enum class PermissionDecision { ALLOW, DENY }
 
     /** Launch-time settings; a change forces the process to restart. */
     private data class Config(
@@ -83,6 +112,22 @@ class ClaudeCliClient(
     @Volatile
     private var closed = false
 
+    /**
+     * Permission asks the CLI is blocked on, by request id. Kept here rather
+     * than in the UI because the answer has to echo the request's own input and
+     * tool_use_id back, and because a dying process must fail them all — an
+     * unanswered ask would otherwise leave the CLI waiting forever.
+     */
+    private val pendingPermissions = java.util.concurrent.ConcurrentHashMap<String, PermissionRequest>()
+
+    /**
+     * `tool_use_id`s the user denied through our own dialog. The CLI lists those
+     * in the result's `permission_denials` alongside the ones it refused without
+     * asking — reporting both back would tell the user their own "Deny" was
+     * something that went wrong. Cleared at the start of each turn.
+     */
+    private val userDeniedToolUseIds = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+
     /** Interrupt the current turn. Kills the process; the next [send] resumes. */
     fun cancel() {
         synchronized(lock) {
@@ -116,6 +161,7 @@ class ClaudeCliClient(
                 cancelled = false
                 currentListener = listener
                 turnActive = true
+                userDeniedToolUseIds.clear()
 
                 // Reuse the running process only when nothing launch-critical changed
                 // and it's still driving the same session — otherwise the CLI would
@@ -162,6 +208,10 @@ class ClaudeCliClient(
             addParameter("--verbose")
             if (!resumeId.isNullOrBlank()) addParameters("--resume", resumeId)
             if (cfg.permissionMode.isNotBlank()) addParameters("--permission-mode", cfg.permissionMode)
+            // Route permission asks to us over stdio as `can_use_tool` control
+            // requests. Without it the CLI has no one to ask in --print mode and
+            // silently denies every tool that needs approval.
+            addParameters("--permission-prompt-tool", "stdio")
             if (!cfg.model.isNullOrBlank()) addParameters("--model", cfg.model)
             if (!cfg.agent.isNullOrBlank()) addParameters("--agent", cfg.agent)
             if (cfg.disallowed.isNotEmpty()) {
@@ -196,11 +246,71 @@ class ClaudeCliClient(
     }
 
     private fun stopProcess() {
+        failPendingPermissions()
         writer?.let { runCatching { it.close() } }
         writer = null
         process?.let { runCatching { it.destroy() } }
         process = null
         activeConfig = null
+    }
+
+    /**
+     * Answer a [PermissionRequest]. Safe to call from the EDT: the write itself
+     * happens on a pooled thread, since it goes down a pipe that can block.
+     *
+     * An allow echoes the tool's own input back — the CLI treats an empty
+     * `updatedInput` as "no edit" and falls back to the original, but sending it
+     * verbatim keeps the answer explicit. A deny must carry a message; it is
+     * what Claude sees in place of the tool result.
+     */
+    fun respondToPermission(requestId: String, decision: PermissionDecision, denyMessage: String = "") {
+        val request = pendingPermissions.remove(requestId) ?: return
+        val payload = JsonObject().apply {
+            when (decision) {
+                PermissionDecision.ALLOW -> {
+                    addProperty("behavior", "allow")
+                    request.input?.let { add("updatedInput", it) }
+                }
+
+                PermissionDecision.DENY -> {
+                    addProperty("behavior", "deny")
+                    addProperty("message", denyMessage.ifBlank { "The user declined this tool call." })
+                    request.toolUseId?.let { userDeniedToolUseIds.add(it) }
+                }
+            }
+            request.toolUseId?.let { addProperty("toolUseID", it) }
+        }
+        val envelope = JsonObject().apply {
+            addProperty("type", "control_response")
+            add("response", JsonObject().apply {
+                addProperty("subtype", "success")
+                addProperty("request_id", requestId)
+                add("response", payload)
+            })
+        }
+        ApplicationManager.getApplication().executeOnPooledThread {
+            synchronized(lock) {
+                val w = writer ?: return@executeOnPooledThread
+                runCatching {
+                    w.write(envelope.toString())
+                    w.write("\n")
+                    w.flush()
+                }.onFailure { log.warn("Failed to answer permission request $requestId", it) }
+            }
+        }
+    }
+
+    /**
+     * Deny everything still outstanding. Called when the process goes away: the
+     * CLI is gone so the answer lands nowhere, but the UI needs to stop showing
+     * dialogs for a session that no longer exists.
+     */
+    private fun failPendingPermissions() {
+        if (pendingPermissions.isEmpty()) return
+        val listener = currentListener
+        val ids = pendingPermissions.keys.toList()
+        pendingPermissions.clear()
+        listener?.let { l -> ids.forEach { id -> edt { l.onPermissionCancelled(id) } } }
     }
 
     private fun writeUserMessage(prompt: String) {
@@ -249,6 +359,8 @@ class ClaudeCliClient(
                 process = null
                 writer = null
                 activeConfig = null
+                // The process is gone; nothing can answer an outstanding ask now.
+                failPendingPermissions()
             }
             if (turnActive) {
                 turnActive = false
@@ -269,16 +381,73 @@ class ClaudeCliClient(
     }
 
     private fun handleLine(line: String) {
-        if (closed) return // owner disposed; don't touch a torn-down panel
-        val listener = currentListener ?: return
         val obj = JsonParser.parseString(line).asJsonObject
+        // A permission ask blocks the CLI until it is answered, so it must be
+        // answered even when there is nobody to show it to — a dropped ask is a
+        // turn that never ends.
+        if (closed || currentListener == null) {
+            if (obj.str("type") == "control_request" &&
+                obj.getAsJsonObject("request")?.str("subtype") == "can_use_tool"
+            ) {
+                obj.str("request_id")?.let { id ->
+                    pendingPermissions[id] = PermissionRequest(
+                        requestId = id,
+                        toolName = "tool",
+                        displayName = "tool",
+                        description = "",
+                        input = null,
+                        toolUseId = obj.getAsJsonObject("request")?.str("tool_use_id"),
+                    )
+                    respondToPermission(id, PermissionDecision.DENY, "The chat window is not available to approve this.")
+                }
+            }
+            return // owner disposed; don't touch a torn-down panel
+        }
+        val listener = currentListener ?: return
         when (obj.str("type")) {
             "system" -> {
-                if (obj.str("subtype") == "init") {
-                    obj.str("session_id")?.let { id ->
+                when (obj.str("subtype")) {
+                    "init" -> obj.str("session_id")?.let { id ->
                         liveSessionId = id
                         edt { listener.onSystemInit(id) }
                     }
+                    // A tool the CLI refused on its own (a deny rule, or a mode
+                    // that never asks). Previously dropped, which made a blocked
+                    // turn look like a successful one.
+                    "permission_denied" -> {
+                        val tool = obj.str("tool_name") ?: "tool"
+                        val message = obj.str("message") ?: "Permission denied."
+                        edt { listener.onPermissionDenied(tool, message) }
+                    }
+                }
+            }
+
+            // Claude asking to use a tool. The reply is written by whoever
+            // handles onPermissionRequest; this thread must not wait for it, or
+            // the whole output stream stalls behind one dialog.
+            "control_request" -> {
+                val request = obj.getAsJsonObject("request") ?: return
+                val requestId = obj.str("request_id") ?: return
+                if (request.str("subtype") != "can_use_tool") return
+                val toolName = request.str("tool_name") ?: "tool"
+                val permission = PermissionRequest(
+                    requestId = requestId,
+                    toolName = toolName,
+                    displayName = request.str("display_name") ?: toolName,
+                    description = request.str("description")
+                        ?: summarizeToolInput(request.getAsJsonObject("input")),
+                    input = request.getAsJsonObject("input"),
+                    toolUseId = request.str("tool_use_id"),
+                )
+                pendingPermissions[requestId] = permission
+                edt { listener.onPermissionRequest(permission) }
+            }
+
+            // The CLI withdrew an ask (interrupt, or it answered itself).
+            "control_cancel_request" -> {
+                val requestId = obj.str("request_id") ?: return
+                if (pendingPermissions.remove(requestId) != null) {
+                    edt { listener.onPermissionCancelled(requestId) }
                 }
             }
 
@@ -322,6 +491,27 @@ class ClaudeCliClient(
                 val isError = obj.str("subtype") != "success"
                 val errText = if (isError) obj.str("result") ?: "Run did not complete successfully." else null
                 edt { listener.onResult(sid, cost, isError, errText) }
+
+                // A turn that ends with blocked tools reports subtype "success",
+                // so without this the transcript gives no sign anything was
+                // refused. Name the tools that were.
+                obj.getAsJsonArray("permission_denials")
+                    ?.map { it.asJsonObject }
+                    // Skip the ones the user denied themselves — they already saw
+                    // the dialog and Claude's reply; repeating it back as a
+                    // problem would be reporting their own decision as a fault.
+                    ?.filterNot { it.str("tool_use_id") in userDeniedToolUseIds }
+                    ?.mapNotNull { it.str("tool_name") }
+                    ?.distinct()
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.let { tools ->
+                        edt {
+                            listener.onPermissionDenied(
+                                tools.joinToString(", "),
+                                "Blocked without asking — no permission was granted for: ${tools.joinToString(", ")}.",
+                            )
+                        }
+                    }
 
                 val usage = obj.getAsJsonObject("usage")
                 val contextUsed = if (usage != null) {

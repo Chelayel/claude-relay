@@ -159,6 +159,13 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
     // every send. See [ClaudeCliClient].
     private val cli = ClaudeCliClient(workingDir, executable)
 
+    // Tools the user approved "for this chat" — the same bargain Gemini Relay
+    // offers, and cleared with the conversation by New Chat.
+    private val approvedTools = mutableSetOf<String>()
+
+    /** Request id of the permission dialog currently on screen, if any. */
+    private var openPermissionRequestId: String? = null
+
     // ---- autonomous "write tests until coverage" loop ------------------------
     // Active while the Auto-Test loop is running; drives repeated session turns
     // until the model reports the target line coverage (or the round cap is hit).
@@ -955,7 +962,7 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
         // Ask mode answers with read tools only; denying the mutators is the guard,
         // and acceptEdits keeps the remaining (safe) tools from stalling on prompts.
         val permission = if (askMode) "acceptEdits" else permissionChip.selected.cliValue
-        val disallowed = ALWAYS_DISALLOWED_TOOLS + if (askMode) ASK_DISALLOWED_TOOLS else emptyList()
+        val disallowed = if (askMode) ASK_DISALLOWED_TOOLS else emptyList()
         val model = modelCliValue()
 
         cli.send(prompt, sessionId, permission, model, agent, disallowed, object : ClaudeCliClient.Listener {
@@ -979,7 +986,63 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
             }
             override fun onError(message: String) = chat.addError(message)
             override fun onComplete() = finishTurn()
+            override fun onPermissionRequest(request: ClaudeCliClient.PermissionRequest) = askPermission(request)
+            override fun onPermissionCancelled(requestId: String) { closePermissionDialog(requestId) }
+            override fun onPermissionDenied(toolName: String, message: String) {
+                chat.addToolResult("$toolName — $message", true)
+            }
         })
+    }
+
+    // ---- tool permission prompts ---------------------------------------------
+
+    /**
+     * Ask the user whether Claude may run this tool, then answer the CLI. Runs on
+     * the EDT: the dialog is modal, but the CLI's reader thread is not waiting on
+     * it — the answer goes back whenever it comes, and until then the CLI simply
+     * holds that one tool call.
+     */
+    private fun askPermission(request: ClaudeCliClient.PermissionRequest) {
+        if (request.toolName in approvedTools) {
+            cli.respondToPermission(request.requestId, ClaudeCliClient.PermissionDecision.ALLOW)
+            return
+        }
+        val detail = request.description.takeIf { it.isNotBlank() }?.let { "\n\n$it" } ?: ""
+        openPermissionRequestId = request.requestId
+        val choice = try {
+            Messages.showDialog(
+                project,
+                "Allow Claude to run \"${request.displayName}\"?$detail",
+                "Claude Relay — Permission",
+                arrayOf("Allow", "Allow for This Chat", "Deny"),
+                0,
+                Messages.getQuestionIcon(),
+            )
+        } finally {
+            openPermissionRequestId = null
+        }
+        // The CLI withdrew the ask while the dialog was up (Stop, or the turn
+        // died); answering a request that no longer exists is harmless but
+        // pointless, and respondToPermission drops an unknown id anyway.
+        when (choice) {
+            0 -> cli.respondToPermission(request.requestId, ClaudeCliClient.PermissionDecision.ALLOW)
+            1 -> {
+                approvedTools += request.toolName
+                cli.respondToPermission(request.requestId, ClaudeCliClient.PermissionDecision.ALLOW)
+                chat.addToolResult("${request.displayName} — allowed for the rest of this chat.", false)
+            }
+            else -> cli.respondToPermission(
+                request.requestId,
+                ClaudeCliClient.PermissionDecision.DENY,
+                "The user denied permission to run ${request.displayName}.",
+            )
+        }
+    }
+
+    /** The CLI gave up on an ask we're still showing — nothing left to answer. */
+    private fun closePermissionDialog(requestId: String) {
+        if (openPermissionRequestId != requestId) return
+        chat.addToolResult("Permission request withdrawn — the turn ended first.", true)
     }
 
     private fun stop() {
@@ -1037,7 +1100,7 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
     /** Fire one turn of the coverage loop against the current session. */
     private fun sendCoverageTurn(prompt: String) {
         testLoopBuffer.setLength(0)
-        cli.send(prompt, sessionId, "bypassPermissions", modelCliValue(), null, ALWAYS_DISALLOWED_TOOLS, testLoopListener)
+        cli.send(prompt, sessionId, "bypassPermissions", modelCliValue(), null, emptyList(), testLoopListener)
     }
 
     /** Put the composer into the busy state used for a coverage turn. */
@@ -1078,6 +1141,16 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
             testLoopActive = false
         }
         override fun onComplete() = onCoverageTurnComplete()
+
+        // The coverage loop runs unattended under bypassPermissions, which is
+        // what the user agreed to when starting it. Anything that still asks is
+        // allowed rather than left waiting on a dialog nobody is watching.
+        override fun onPermissionRequest(request: ClaudeCliClient.PermissionRequest) {
+            cli.respondToPermission(request.requestId, ClaudeCliClient.PermissionDecision.ALLOW)
+        }
+        override fun onPermissionDenied(toolName: String, message: String) {
+            chat.addToolResult("$toolName — $message", true)
+        }
     }
 
     /** Parse the round's COVERAGE/STATUS markers and continue, finish, or stop. */
@@ -1157,6 +1230,8 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
         if (running) stop()
         testLoopActive = false
         sessionId = null
+        // "Allow for this chat" was a promise about this chat only.
+        approvedTools.clear()
         ctxUsed = 0L
         setSessionTitle(null)
         chat.clear()
@@ -1209,14 +1284,6 @@ class ClaudeChatPanel(private val project: Project) : JPanel(BorderLayout()), Di
         private val ACCENT = Color(0xD9, 0x77, 0x57)
         private val STOP_BG = Color(0x8A, 0x46, 0x42)
         private val IMAGE_EXTS = setOf("png", "jpg", "jpeg", "gif", "webp", "bmp")
-        /**
-         * Always denied. AskUserQuestion is Claude's interactive multiple-choice
-         * picker, but the CLI's `--print` stream-json mode has no interactive
-         * channel — in every permission mode it auto-resolves the call to "no
-         * answer was selected" and moves on. Denying the tool makes Claude ask
-         * the question as plain text instead, which the user can answer by typing.
-         */
-        private val ALWAYS_DISALLOWED_TOOLS = listOf("AskUserQuestion")
         /** Tools denied in Ask mode so Claude reads & answers but never modifies. */
         private val ASK_DISALLOWED_TOOLS = listOf("Edit", "Write", "MultiEdit", "NotebookEdit", "Bash")
         /** Safety cap on autonomous test-writing rounds before we hand control back. */

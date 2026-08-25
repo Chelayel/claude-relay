@@ -31,6 +31,17 @@
     ]]></description>
 
     <change-notes><![CDATA[
+        <p><b>1.1.0</b> — Claude can now ask your permission to use a tool, and you can answer.
+        Until now nothing in the plugin could reply to a permission request, so the CLI denied
+        every one of them: “Default (ask)” mode was in practice “deny every edit”, and all you
+        saw was a red tool error on a turn that still reported success. You now get a dialog —
+        <b>Allow</b>, <b>Allow for This Chat</b>, or <b>Deny</b> — and a tool the CLI refuses
+        on its own is named in the transcript instead of passing unnoticed.</p>
+        <p><b>1.0.18</b> — Fixed Claude's questions, which stopped working again after 1.0.17.
+        The previous fix denied the interactive question tool to force a plain-text fallback,
+        but that no longer works with the persistent streaming session and instead suppressed
+        the question entirely. Claude is no longer blocked from asking, so its questions show
+        up again and you can answer by typing.</p>
         <p><b>1.0.17</b> — Questions now work. When Claude wanted to ask a multiple-choice
         question it used its interactive picker, which has no UI in the CLI's headless mode
         and auto-resolved to “no answer was selected.” Claude now asks in plain text instead,

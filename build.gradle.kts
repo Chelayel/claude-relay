@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.chelayel.relay"
-version = "1.0.17"
+version = "1.1.0"
 
 repositories {
     mavenCentral()

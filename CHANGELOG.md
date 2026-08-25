@@ -6,6 +6,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-08-25
+
+### Added
+- **Tool permission prompts.** When Claude asks to use a tool the current
+  permission mode won't grant on its own, you now get a dialog — Allow, Allow
+  for This Chat, or Deny — and your answer reaches the CLI. Previously nothing
+  in the plugin could answer a permission request, so the CLI denied every one
+  of them: "Default (ask)" mode was effectively "deny every edit", and the only
+  sign was a red tool error while the turn still reported success. Permission
+  asks now travel over the same pipe as everything else
+  (`--permission-prompt-tool stdio`). "Allow for This Chat" is remembered per
+  tool until New Chat clears it.
+- Tools the CLI refuses without asking are now named in the transcript, instead
+  of a blocked turn looking like a successful one.
+
+### Fixed
+- Claude's questions work again. 1.0.17 denied the `AskUserQuestion` tool to
+  force a plain-text fallback, which was correct for the old one-shot
+  `claude -p` invocation but wrong for the current persistent `--input-format
+  stream-json` session — there the deny simply suppressed the question. The
+  tool is no longer denied, so Claude asks its questions (matching the working
+  behaviour in the ai-relay sibling project) and you answer by typing. Ask
+  mode's mutator denials are unchanged.
+
 ## [1.0.12] - 2026-07-06
 
 ### Fixed
