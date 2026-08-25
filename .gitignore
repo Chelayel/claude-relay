@@ -5,3 +5,10 @@ build/
 *.iml
 out/
 .DS_Store
+
+# IDE compile output — the IntelliJ/Eclipse build writes classes and a copy of
+# the sources here, so a stale bin/ shadows the real ones under src/.
+bin/
+
+# Assistant/tool scratch state, local to this machine.
+.serena/
