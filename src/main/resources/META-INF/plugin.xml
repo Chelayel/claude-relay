@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.chelayel.relay.claude</id>
     <name>Claude Relay</name>
-    <vendor email="charbelhelayel@gmail.com" url="https://github.com/Chelayel/claude-relay">Chelayel</vendor>
+    <vendor email="charbelhelayel@gmail.com" url="https://www.chelayel.com">Chelayel</vendor>
 
     <description><![CDATA[
         <h2>Claude Relay — Claude Code, native in your JetBrains IDE</h2>

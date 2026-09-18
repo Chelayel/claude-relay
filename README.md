@@ -107,6 +107,6 @@ but never modifies your files.
 ---
 
 <div align="center">
-Built by <b>Chelayel</b> · Unofficial, not affiliated with Anthropic<br>
+Built by <a href="https://www.chelayel.com"><b>Chelayel</b></a> · Unofficial, not affiliated with Anthropic<br>
 Released under the <a href="LICENSE">MIT License</a> · © 2026 Chelayel
 </div>
