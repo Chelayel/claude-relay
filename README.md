@@ -10,14 +10,22 @@
 
 </div>
 
+> [!WARNING]
+> **Claude Relay is deprecated and gets no further updates.** JetBrains now does
+> this better: [JetBrains Air](https://www.jetbrains.com/help/air/quick-start-with-air.html)
+> runs Claude natively, alongside other agents. If you also need Gemini through an
+> Apigee gateway, or your Gemini as a model inside GitHub Copilot, use
+> [AI Relay](https://github.com/Chelayel/ai-relay), which also drives Claude Code.
+> The plugin keeps working for now; the code stays here under MIT.
+
 ---
 
 Claude Relay brings the [Claude Code](https://claude.com/claude-code) experience you get in VS Code
 into IntelliJ IDEA, PyCharm, WebStorm, GoLand, Rider and the rest of the JetBrains family — as a
 first-class tool window that drives the real `claude` CLI in the context of your open project.
 
-> Part of the **Relay** family of IDE companions by **Chelayel** — alongside *Vertex Relay* (Gemini /
-> Vertex AI) and *Apigee Relay*.
+> Part of the **Relay** family by **Chelayel**, now carried forward by
+> [AI Relay](https://github.com/Chelayel/ai-relay).
 
 ## Why it exists
 

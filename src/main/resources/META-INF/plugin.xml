@@ -4,6 +4,13 @@
     <vendor email="charbelhelayel@gmail.com" url="https://www.chelayel.com">Chelayel</vendor>
 
     <description><![CDATA[
+        <p><b>⚠ Deprecated.</b> Claude Relay is no longer developed. JetBrains now does this
+        better: <a href="https://www.jetbrains.com/help/air/quick-start-with-air.html">JetBrains Air</a>
+        runs Claude natively, alongside other agents. If you also need Gemini through an Apigee
+        gateway, or your Gemini as a model inside GitHub Copilot, use
+        <a href="https://plugins.jetbrains.com/plugin/34342-ai-relay">AI Relay</a>, which also drives
+        Claude Code. The plugin keeps working but gets no further updates.</p>
+
         <h2>Claude Relay — Claude Code, native in your JetBrains IDE</h2>
         <p>A native chat panel that drives the official <b>Claude Code</b> CLI from inside IntelliJ IDEA,
         PyCharm, WebStorm, GoLand, Rider and the rest of the JetBrains family — the side-panel experience
@@ -31,6 +38,11 @@
     ]]></description>
 
     <change-notes><![CDATA[
+        <p><b>1.2.0</b> — Claude Relay is deprecated. JetBrains Air now runs Claude natively and
+        does it better, and AI Relay carries the Relay work forward (Gemini through Apigee, your
+        Gemini inside GitHub Copilot, and Claude Code too). A banner at the top of the panel
+        links to both. Nothing else changes: the panel keeps working, but this is the last
+        release.</p>
         <p><b>1.1.0</b> — Claude can now ask your permission to use a tool, and you can answer.
         Until now nothing in the plugin could reply to a permission request, so the CLI denied
         every one of them: “Default (ask)” mode was in practice “deny every edit”, and all you

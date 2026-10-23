@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.chelayel.relay"
-version = "1.1.0"
+version = "1.2.0"
 
 repositories {
     mavenCentral()
@@ -35,6 +35,11 @@ intellijPlatform {
             // No upper bound — stay compatible with future IDE builds.
             untilBuild = provider { null }
         }
+    }
+
+    // Same variable AI Relay's release uses: ./gradlew publishPlugin
+    publishing {
+        token = providers.environmentVariable("JETBRAINS_MARKETPLACE_TOKEN")
     }
 }
 

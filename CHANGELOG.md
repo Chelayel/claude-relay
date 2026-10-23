@@ -6,6 +6,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-23
+
+### Deprecated
+- **Claude Relay is deprecated; this is the last release.** JetBrains Air now
+  runs Claude natively and does it better, and AI Relay carries the Relay work
+  forward (Gemini through Apigee, Gemini as a model in GitHub Copilot, and
+  Claude Code too). A banner at the top of the tool window links to both. The
+  panel itself is unchanged and keeps working.
+
 ## [1.1.0] - 2026-08-25
 
 ### Added
