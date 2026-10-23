@@ -1,0 +1,98 @@
+# Builds the plugin and publishes it on a tag:
+#
+#   git tag v1.2.3 && git push origin v1.2.3
+#
+# The tag must match `version` in build.gradle.kts. The plugin is verified,
+# attached to a GitHub release, and uploaded to the JetBrains Marketplace when
+# the Marketplace does not have that version yet, so re-running a tag is safe.
+# "Run workflow" by hand builds and verifies without publishing.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Tag matches the build version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          version=$(grep -E '^version = ' build.gradle.kts | sed -E 's/.*"([^"]+)".*/\1/')
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match version $version in build.gradle.kts."
+            exit 1
+          fi
+
+      - name: Build and verify
+        run: |
+          ./gradlew buildPlugin verifyPlugin
+          mkdir -p dist && cp build/distributions/*.zip dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plugin
+          path: dist/*
+
+  publish:
+    needs: [build]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: plugin
+          path: dist
+
+      # Idempotent: a rerun finds the release already there and refreshes its asset.
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --generate-notes
+          fi
+
+      - name: JetBrains Marketplace
+        env:
+          JETBRAINS_MARKETPLACE_TOKEN: ${{ secrets.JETBRAINS_MARKETPLACE_TOKEN }}
+        run: |
+          if [ -z "$JETBRAINS_MARKETPLACE_TOKEN" ]; then
+            echo "::warning::JETBRAINS_MARKETPLACE_TOKEN is not set; skipping the JetBrains Marketplace upload."
+            exit 0
+          fi
+          version="${GITHUB_REF_NAME#v}"
+          listed=$(curl -sS "https://plugins.jetbrains.com/plugins/list?pluginId=com.chelayel.relay.claude" | grep -o '<version>[^<]*</version>' | head -1 | sed 's/<[^>]*>//g' || true)
+          if [ "$listed" = "$version" ]; then
+            echo "::notice::The JetBrains Marketplace already has $version."
+            exit 0
+          fi
+          # The listing can lag an upload: a version it already holds is done, not a failure.
+          set -o pipefail
+          if ./gradlew publishPlugin 2>&1 | tee publish.log; then
+            echo "Published $version."
+          elif grep -q "already contains version" publish.log; then
+            echo "::notice::The JetBrains Marketplace already has $version."
+          else
+            exit 1
+          fi

@@ -16,6 +16,9 @@
         PyCharm, WebStorm, GoLand, Rider and the rest of the JetBrains family — the side-panel experience
         you'd get in VS Code, without leaving your IDE or living in the terminal.</p>
 
+        <p><img src="https://raw.githubusercontent.com/Chelayel/claude-relay/main/docs/screenshots/agent-turn.png" alt="An agent turn with tool activity and the answer" width="300"/>
+        <img src="https://raw.githubusercontent.com/Chelayel/claude-relay/main/docs/screenshots/editor-selection.png" alt="A question about the editor selection" width="300"/></p>
+
         <p><b>Highlights</b></p>
         <ul>
             <li><b>Streaming chat</b> with live tool activity — edits, commands, and file reads as they happen</li>
@@ -38,6 +41,7 @@
     ]]></description>
 
     <change-notes><![CDATA[
+        <p><b>1.2.1</b> — No changes to the plugin; the description now shows screenshots of the chat transcript.</p>
         <p><b>1.2.0</b> — Claude Relay is deprecated. JetBrains Air now runs Claude natively and
         does it better, and AI Relay carries the Relay work forward (Gemini through Apigee, your
         Gemini inside GitHub Copilot, and Claude Code too). A banner at the top of the panel

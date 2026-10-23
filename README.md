@@ -94,22 +94,17 @@ but never modifies your files.
 ## Screenshots
 
 <p align="center">
-  <img src="docs/screenshots/overview.png" alt="Claude Relay docked in a JetBrains IDE" width="900"><br>
-  <em>Docked in your IDE — your project's <code>CLAUDE.md</code>, agents, skills and slash commands surfaced as context.</em>
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/transcript.png" alt="Streaming transcript with tool activity" width="380">
+  <img src="docs/screenshots/agent-turn.png" alt="An agent turn with tool activity and the answer" width="380">
   &nbsp;&nbsp;
-  <img src="docs/screenshots/add-context.png" alt="Add-context menu" width="380">
+  <img src="docs/screenshots/editor-selection.png" alt="A question about the editor selection" width="380">
 </p>
 <p align="center">
-  <em>A real, themed transcript with live tool activity (left) — and one-click context: current file, selection, files, images, or run-as-agent (right).</em>
+  <em>A real, themed transcript with live tool activity: reads, edits and a test run (left) — and a question about the lines selected in the editor (right).</em>
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/composer.png" alt="The composer" width="760"><br>
-  <em>Compact composer — Agent / Ask mode, model &amp; permission, attachments, and send.</em>
+  <img src="docs/screenshots/streaming.png" alt="A turn in progress after a failing test run" width="380"><br>
+  <em>Mid-turn: a failing command's output, Claude's reply streaming in, and the next tool call on its way.</em>
 </p>
 
 ---
