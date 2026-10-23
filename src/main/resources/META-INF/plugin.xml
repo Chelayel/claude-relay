@@ -4,7 +4,7 @@
     <vendor email="charbelhelayel@gmail.com" url="https://www.chelayel.com">Chelayel</vendor>
 
     <description><![CDATA[
-        <p><b>⚠ Deprecated.</b> Claude Relay is no longer developed. JetBrains now does this
+        <p><b>Deprecated:</b> Claude Relay is no longer developed. JetBrains now does this
         better: <a href="https://www.jetbrains.com/help/air/quick-start-with-air.html">JetBrains Air</a>
         runs Claude natively, alongside other agents. If you also need Gemini through an Apigee
         gateway, or your Gemini as a model inside GitHub Copilot, use
