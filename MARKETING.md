@@ -71,17 +71,16 @@ Post targets: r/JetBrains, r/ClaudeAI, LinkedIn, X/Twitter, dev.to.
 
 | File | Shows | Use for |
 | --- | --- | --- |
-| `overview.png` | Full IDE + panel with Project context (CLAUDE.md, agents, skills, commands) | **Primary Marketplace screenshot #1** / README hero |
-| `transcript.png` | Streaming answer with rendered Markdown + tool activity | Marketplace #2 |
-| `add-context.png` | The `+` "Add context" menu (current file, selection, files, images, run-as-agent) | Marketplace #3 |
-| `composer.png` | Compact composer (Agent/Ask, model, permission, send) | Marketplace #4 / inline |
+| `agent-turn.png` | A full agent turn: Read, Grep, three Edits and `npm test` with its output, then the answer | **Primary Marketplace screenshot #1** / README |
+| `editor-selection.png` | A question about the editor selection, a thinking line, a Grep and the fix | Marketplace #2 |
+| `streaming.png` | A turn in progress: failing test output, a partial reply, a pending Read | Marketplace #3 |
+
+These are renders of the real transcript page (`ui/ChatWebView.kt`) with sample data; the Swing
+header and composer around it aren't shown.
 
 **Uploading to the Marketplace:** screenshots are added on the plugin's Marketplace page
-(*Edit plugin → Media*), not bundled in the zip. Upload the four above in that order; set
-`overview.png` as the first/cover image. Recommend ≥ 1280px wide; the tall panel shots are fine as-is.
-
-> Tip: for an even cleaner cover, retake `overview.png` after removing the duplicate
-> `code-reviewer` agent file so the Agents row shows three distinct agents.
+(*Edit plugin → Media*), not bundled in the zip. Upload the three above in that order; set
+`agent-turn.png` as the first/cover image. Recommend ≥ 1280px wide; the tall panel shots are fine as-is.
 
 ## Screenshot shot-list (reference — for future captures)
 
