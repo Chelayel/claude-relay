@@ -11,11 +11,11 @@
 </div>
 
 > [!WARNING]
-> **Claude Relay is deprecated and gets no further updates.** JetBrains now does
-> this better: [JetBrains Air](https://www.jetbrains.com/help/air/quick-start-with-air.html)
-> runs Claude natively, alongside other agents. If you also need Gemini through an
-> Apigee gateway, or your Gemini as a model inside GitHub Copilot, use
-> [AI Relay](https://github.com/Chelayel/ai-relay), which also drives Claude Code.
+> **Claude Relay is deprecated and gets no further updates.** Its successor is
+> [AI Relay](https://github.com/Chelayel/ai-relay): the same chat panel driving your
+> `claude` CLI (pick **Claude** in the agent menu), plus Gemini through an Apigee
+> gateway, Vertex or an API key, and your Gemini as a model inside GitHub Copilot.
+> Free and open source, like this plugin.
 > The plugin keeps working for now; the code stays here under MIT.
 
 ---

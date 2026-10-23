@@ -4,12 +4,11 @@
     <vendor email="charbelhelayel@gmail.com" url="https://www.chelayel.com">Chelayel</vendor>
 
     <description><![CDATA[
-        <p><b>Deprecated:</b> Claude Relay is no longer developed. JetBrains now does this
-        better: <a href="https://www.jetbrains.com/help/air/quick-start-with-air.html">JetBrains Air</a>
-        runs Claude natively, alongside other agents. If you also need Gemini through an Apigee
-        gateway, or your Gemini as a model inside GitHub Copilot, use
-        <a href="https://plugins.jetbrains.com/plugin/34342-ai-relay">AI Relay</a>, which also drives
-        Claude Code. The plugin keeps working but gets no further updates.</p>
+        <p><b>Deprecated:</b> Claude Relay is no longer developed. Its successor,
+        <a href="https://plugins.jetbrains.com/plugin/34342-ai-relay">AI Relay</a>, is the same chat panel driving your
+        <code>claude</code> CLI (pick <b>Claude</b> in its agent menu), plus Gemini through an Apigee gateway,
+        Vertex or an API key, and your Gemini as a model inside GitHub Copilot. Free and open source, like
+        this plugin. Claude Relay keeps working but gets no further updates.</p>
 
         <h2>Claude Relay — Claude Code, native in your JetBrains IDE</h2>
         <p>A native chat panel that drives the official <b>Claude Code</b> CLI from inside IntelliJ IDEA,
@@ -41,6 +40,8 @@
     ]]></description>
 
     <change-notes><![CDATA[
+        <p><b>1.2.2</b> — The deprecation notice and the banner above the chat point to AI Relay, which drives
+        the same <code>claude</code> CLI, instead of JetBrains Air.</p>
         <p><b>1.2.1</b> — No changes to the plugin; the description now shows screenshots of the chat transcript.</p>
         <p><b>1.2.0</b> — Claude Relay is deprecated. JetBrains Air now runs Claude natively and
         does it better, and AI Relay carries the Relay work forward (Gemini through Apigee, your
