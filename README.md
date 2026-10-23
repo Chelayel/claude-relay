@@ -93,6 +93,8 @@ but never modifies your files.
 
 ## Screenshots
 
+<p align="center"><img src="docs/screenshots/intellij.png" alt="Claude Relay in IntelliJ IDEA: a finished agent turn in the panel beside the editor" width="780"></p>
+
 <p align="center">
   <img src="docs/screenshots/agent-turn.png" alt="An agent turn with tool activity and the answer" width="380">
   &nbsp;&nbsp;

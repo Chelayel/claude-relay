@@ -15,6 +15,7 @@
         PyCharm, WebStorm, GoLand, Rider and the rest of the JetBrains family — the side-panel experience
         you'd get in VS Code, without leaving your IDE or living in the terminal.</p>
 
+        <p><img src="https://raw.githubusercontent.com/Chelayel/claude-relay/main/docs/screenshots/intellij.png" alt="Claude Relay in IntelliJ IDEA: a finished agent turn in the panel beside the editor" width="640"/></p>
         <p><img src="https://raw.githubusercontent.com/Chelayel/claude-relay/main/docs/screenshots/agent-turn.png" alt="An agent turn with tool activity and the answer" width="300"/>
         <img src="https://raw.githubusercontent.com/Chelayel/claude-relay/main/docs/screenshots/editor-selection.png" alt="A question about the editor selection" width="300"/></p>
 
@@ -40,6 +41,7 @@
     ]]></description>
 
     <change-notes><![CDATA[
+        <p><b>1.2.3</b> — No changes to the plugin; the description now shows the panel in IntelliJ IDEA.</p>
         <p><b>1.2.2</b> — The deprecation notice and the banner above the chat point to AI Relay, which drives
         the same <code>claude</code> CLI, instead of JetBrains Air.</p>
         <p><b>1.2.1</b> — No changes to the plugin; the description now shows screenshots of the chat transcript.</p>
